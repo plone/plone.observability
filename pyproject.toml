@@ -36,7 +36,9 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
+    "coverage[toml]",
     "pytest",
+    "pytest-cov",
     "pytest-plone",
     "plone.app.testing",
     "plone.testing",

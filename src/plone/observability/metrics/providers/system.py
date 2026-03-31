@@ -1,4 +1,3 @@
-import os
 import resource
 
 from zope.interface import implementer

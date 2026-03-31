@@ -85,6 +85,7 @@ class TestZODBMetricProvider:
     def test_no_crash_without_p_jar(self):
         class NoJarApp:
             pass
+
         provider = ZODBMetricProvider(NoJarApp())
         metrics = list(provider.collect())
         assert metrics == []

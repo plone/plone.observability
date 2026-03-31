@@ -33,10 +33,7 @@ class TestPrometheusFormatter:
             ),
         ]
         result = formatter.format(metrics)
-        assert (
-            'plone_content_total{scope="global",portal_type="Document"} 42'
-            in result
-        )
+        assert 'plone_content_total{scope="global",portal_type="Document"} 42' in result
 
     def test_format_info(self):
         formatter = PrometheusFormatter()

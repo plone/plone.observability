@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     """HTTPServer that handles each request in a new thread."""
+
     daemon_threads = True
 
 
@@ -40,7 +41,9 @@ class HealthRequestHandler(BaseHTTPRequestHandler):
             checks[name] = {"ok": check_ok, "message": message}
             if not check_ok:
                 ok = False
-        self._send_json(200 if ok else 503, {"status": "ok" if ok else "failed", "checks": checks})
+        self._send_json(
+            200 if ok else 503, {"status": "ok" if ok else "failed", "checks": checks}
+        )
 
     def _handle_ready(self):
         server = self.server
@@ -53,7 +56,9 @@ class HealthRequestHandler(BaseHTTPRequestHandler):
                 ok = False
         if ok:
             server.health_server._started = True
-        self._send_json(200 if ok else 503, {"status": "ok" if ok else "failed", "checks": checks})
+        self._send_json(
+            200 if ok else 503, {"status": "ok" if ok else "failed", "checks": checks}
+        )
 
     def _handle_startup(self):
         started = self.server.health_server._started
@@ -79,9 +84,7 @@ class HealthServer:
     """Manages the health check HTTP server on a separate daemon thread."""
 
     def __init__(self, host=None, port=None):
-        self.host = host or os.environ.get(
-            "PLONE_OBSERVABILITY_HEALTH_HOST", "0.0.0.0"
-        )
+        self.host = host or os.environ.get("PLONE_OBSERVABILITY_HEALTH_HOST", "0.0.0.0")
         self.port = port or int(
             os.environ.get("PLONE_OBSERVABILITY_HEALTH_PORT", "8081")
         )

@@ -11,6 +11,7 @@ class TestOnProcessStarting:
     @mock.patch("plone.observability.startup.queryUtility", return_value=None)
     def test_starts_health_server(self, mock_qu, mock_zope2, mock_server):
         from plone.observability.startup import on_process_starting
+
         mock_zope2.DB = mock.MagicMock()
         on_process_starting(FakeEvent())
         mock_server.start.assert_called_once()
@@ -20,6 +21,7 @@ class TestOnProcessStarting:
     @mock.patch("plone.observability.startup.queryUtility")
     def test_wires_db_to_health_server(self, mock_qu, mock_zope2, mock_server):
         from plone.observability.startup import on_process_starting
+
         fake_db = mock.MagicMock()
         mock_zope2.DB = fake_db
         mock_qu.return_value = None
@@ -31,6 +33,7 @@ class TestOnProcessStarting:
     @mock.patch("plone.observability.startup.queryUtility")
     def test_wires_db_to_readiness_check(self, mock_qu, mock_zope2, mock_server):
         from plone.observability.startup import on_process_starting
+
         fake_db = mock.MagicMock()
         mock_zope2.DB = fake_db
         fake_check = mock.MagicMock()

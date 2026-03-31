@@ -42,6 +42,7 @@ class ZopeRuntimeMetricProvider:
         )
 
         import sys
+
         yield Metric(
             name="plone_info",
             value=1,

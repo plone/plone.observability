@@ -20,9 +20,7 @@ class TestIsAllowed:
             assert is_allowed("192.168.1.1", {}) is False
 
     def test_multiple_cidrs(self):
-        env = {
-            "PLONE_OBSERVABILITY_METRICS_ALLOWLIST": "10.0.0.0/8,192.168.0.0/16"
-        }
+        env = {"PLONE_OBSERVABILITY_METRICS_ALLOWLIST": "10.0.0.0/8,192.168.0.0/16"}
         with mock.patch.dict(os.environ, env, clear=True):
             assert is_allowed("192.168.1.1", {}) is True
             assert is_allowed("172.16.0.1", {}) is False

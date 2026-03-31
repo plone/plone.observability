@@ -12,9 +12,7 @@ def _get_cidrs(env_var, default=""):
 
 def _get_client_ip(peer_ip, headers):
     """Determine the real client IP, respecting trusted proxies."""
-    trusted = _get_cidrs(
-        "PLONE_OBSERVABILITY_TRUSTED_PROXIES", default="127.0.0.1,::1"
-    )
+    trusted = _get_cidrs("PLONE_OBSERVABILITY_TRUSTED_PROXIES", default="127.0.0.1,::1")
     try:
         peer = ip_address(peer_ip)
     except ValueError:

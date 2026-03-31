@@ -104,5 +104,5 @@ class TestMetricsView:
     def test_returns_403_when_not_allowed(self, mock_allowed):
         request = FakeRequest()
         view = MetricsView(FakeApp(), request)
-        result = view()
+        view()
         assert request.response._status == 403

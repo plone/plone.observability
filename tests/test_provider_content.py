@@ -1,4 +1,3 @@
-import time
 from unittest import mock
 
 from plone.observability.interfaces import IMetricProvider
@@ -74,10 +73,14 @@ class TestContentMetricProvider:
         provider = self._make_provider()
         with mock.patch(
             "plone.observability.metrics.providers.content._find_plone_sites",
-            return_value=[FakeSite(FakeCatalog(
-                [("Document", 100), ("Folder", 50)],
-                [("published", 80), ("private", 70)],
-            ))],
+            return_value=[
+                FakeSite(
+                    FakeCatalog(
+                        [("Document", 100), ("Folder", 50)],
+                        [("published", 80), ("private", 70)],
+                    )
+                )
+            ],
         ):
             metrics = list(provider.collect())
         type_metrics = [m for m in metrics if m.name == "plone_content_total"]
@@ -90,10 +93,14 @@ class TestContentMetricProvider:
         provider = self._make_provider()
         with mock.patch(
             "plone.observability.metrics.providers.content._find_plone_sites",
-            return_value=[FakeSite(FakeCatalog(
-                [("Document", 100)],
-                [("published", 80), ("private", 70)],
-            ))],
+            return_value=[
+                FakeSite(
+                    FakeCatalog(
+                        [("Document", 100)],
+                        [("published", 80), ("private", 70)],
+                    )
+                )
+            ],
         ):
             metrics = list(provider.collect())
         state_metrics = [m for m in metrics if m.name == "plone_content_by_state"]
