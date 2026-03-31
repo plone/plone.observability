@@ -1,0 +1,78 @@
+import threading
+
+from plone.observability.interfaces import IMetricProvider
+from plone.observability.metrics.providers.request import (
+    RequestMetricProvider,
+    RequestTracker,
+)
+from zope.interface.verify import verifyObject
+
+
+class FakeApp:
+    pass
+
+
+class TestRequestTracker:
+    def test_record_increments_count(self):
+        tracker = RequestTracker()
+        tracker.record(0.1, 200)
+        tracker.record(0.2, 200)
+        assert tracker.request_count == 2
+
+    def test_record_tracks_errors(self):
+        tracker = RequestTracker()
+        tracker.record(0.1, 500)
+        tracker.record(0.2, 503)
+        tracker.record(0.3, 200)
+        assert tracker.error_counts[500] == 1
+        assert tracker.error_counts[503] == 1
+
+    def test_record_updates_duration_buckets(self):
+        tracker = RequestTracker()
+        tracker.record(0.001, 200)
+        tracker.record(0.1, 200)
+        tracker.record(5.0, 200)
+        assert tracker.duration_sum > 0
+        assert tracker.request_count == 3
+
+    def test_thread_safety(self):
+        tracker = RequestTracker()
+        errors = []
+
+        def record_many():
+            try:
+                for _ in range(100):
+                    tracker.record(0.01, 200)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=record_many) for _ in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert not errors
+        assert tracker.request_count == 1000
+
+
+class TestRequestMetricProvider:
+    def test_implements_interface(self):
+        provider = RequestMetricProvider(FakeApp())
+        assert verifyObject(IMetricProvider, provider)
+
+    def test_scope_is_instance(self):
+        provider = RequestMetricProvider(FakeApp())
+        assert provider.scope == "instance"
+
+    def test_collects_request_count(self):
+        provider = RequestMetricProvider(FakeApp())
+        metrics = {m.name: m for m in provider.collect()}
+        assert "plone_requests_total" in metrics
+
+    def test_collects_duration_histogram(self):
+        provider = RequestMetricProvider(FakeApp())
+        metrics = list(provider.collect())
+        bucket_metrics = [
+            m for m in metrics if m.name == "plone_request_duration_seconds_bucket"
+        ]
+        assert len(bucket_metrics) > 0
