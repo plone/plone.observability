@@ -1,5 +1,8 @@
-<configure xmlns="http://namespaces.zope.org/zope">
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser">
 
+  <!-- Formatters -->
   <utility
       factory=".formatters.PrometheusFormatter"
       provides="plone.observability.interfaces.IMetricFormatter"
@@ -10,6 +13,50 @@
       factory=".formatters.JSONFormatter"
       provides="plone.observability.interfaces.IMetricFormatter"
       name="json"
+      />
+
+  <!-- Metrics view -->
+  <browser:page
+      name="metrics"
+      for="OFS.interfaces.IApplication"
+      class=".view.MetricsView"
+      permission="zope.Public"
+      />
+
+  <!-- Built-in metric providers -->
+  <adapter
+      factory=".providers.zope_runtime.ZopeRuntimeMetricProvider"
+      provides="plone.observability.interfaces.IMetricProvider"
+      for="OFS.interfaces.IApplication"
+      name="zope_runtime"
+      />
+
+  <adapter
+      factory=".providers.zodb.ZODBMetricProvider"
+      provides="plone.observability.interfaces.IMetricProvider"
+      for="OFS.interfaces.IApplication"
+      name="zodb"
+      />
+
+  <adapter
+      factory=".providers.content.ContentMetricProvider"
+      provides="plone.observability.interfaces.IMetricProvider"
+      for="OFS.interfaces.IApplication"
+      name="content"
+      />
+
+  <adapter
+      factory=".providers.request.RequestMetricProvider"
+      provides="plone.observability.interfaces.IMetricProvider"
+      for="OFS.interfaces.IApplication"
+      name="request"
+      />
+
+  <adapter
+      factory=".providers.system.SystemMetricProvider"
+      provides="plone.observability.interfaces.IMetricProvider"
+      for="OFS.interfaces.IApplication"
+      name="system"
       />
 
 </configure>
