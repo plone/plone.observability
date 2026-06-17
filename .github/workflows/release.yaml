@@ -43,16 +43,44 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs:
-      - build-package
+      - qa
+      - tests
     permissions:
       id-token: write
 
     steps:
-      - name: Download packages built by build-and-inspect-python-package
-        uses: actions/download-artifact@v5
+      - uses: actions/checkout@v6
         with:
-          name: Packages
-          path: dist
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v7
+
+      # TestPyPI rejects re-uploads of an existing version and forbids local
+      # version segments (the git-hash part). So we append a monotonic
+      # `.dev<run-number>` to make every main-push upload unique and valid,
+      # e.g. 1.0.0a1 -> 1.0.0a1.dev42. Real releases keep the clean version.
+      - name: Set unique in-dev version
+        env:
+          RUN: ${{ github.run_number }}
+        run: |
+          python - <<'PY'
+          import os, re, pathlib
+          run = os.environ["RUN"]
+          path = pathlib.Path("pyproject.toml")
+          text = path.read_text()
+          text = re.sub(
+              r'(?m)^(version = "[^"]+)"',
+              rf'\g<1>.dev{run}"',
+              text,
+              count=1,
+          )
+          path.write_text(text)
+          print("version ->", re.search(r'(?m)^version = .*', text).group(0))
+          PY
+
+      - name: Build
+        run: uv build
 
       - name: Upload package to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
