@@ -1,5 +1,3 @@
 # Changes
 
-## 1.0.0a1 (unreleased)
-
-- Initial release.
+<!-- towncrier release notes start -->
