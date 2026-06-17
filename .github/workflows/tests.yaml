@@ -67,7 +67,7 @@ jobs:
           uv venv
           uv pip install -c https://dist.plone.org/release/6.2-latest/constraints.txt -e ".[test]"
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: coverage-data-*
           merge-multiple: true
