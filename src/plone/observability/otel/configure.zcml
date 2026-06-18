@@ -1,0 +1,30 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    i18n_domain="plone.observability">
+
+  <subscriber
+      for="zope.processlifetime.IProcessStarting"
+      handler=".startup.on_process_starting"
+      />
+
+  <subscriber
+      for="ZPublisher.interfaces.IPubStart"
+      handler=".pubevents.on_pub_start"
+      />
+
+  <subscriber
+      for="ZPublisher.interfaces.IPubAfterTraversal"
+      handler=".pubevents.on_after_traversal"
+      />
+
+  <subscriber
+      for="ZPublisher.interfaces.IPubSuccess"
+      handler=".pubevents.on_pub_success"
+      />
+
+  <subscriber
+      for="ZPublisher.interfaces.IPubFailure"
+      handler=".pubevents.on_pub_failure"
+      />
+
+</configure>
