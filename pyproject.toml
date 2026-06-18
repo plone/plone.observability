@@ -28,6 +28,7 @@ classifiers = [
 ]
 dependencies = [
     "OFS",
+    "plone.base",
     "Products.CMFCore",
     "Zope",
     "zope.component",
@@ -49,9 +50,15 @@ test = [
     "plone.app.testing",
     "plone.testing",
 ]
+opentelemetry = [
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp",
+    "opentelemetry-instrumentation-wsgi",
+]
 
 [project.entry-points."paste.filter_app_factory"]
 observability = "plone.observability.metrics.providers.request:make_filter"
+opentelemetry = "plone.observability.otel.wsgi:make_filter"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/plone"]
