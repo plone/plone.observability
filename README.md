@@ -216,6 +216,50 @@ from plone.observability.metrics.providers.request import ObservabilityMiddlewar
 application = ObservabilityMiddleware(application)
 ```
 
+## OpenTelemetry Tracing (optional)
+
+Install the extra to enable distributed tracing:
+
+```bash
+pip install "plone.observability[opentelemetry]"
+```
+
+Tracing is **OTel-native**: it honors the standard `OTEL_*` environment
+variables and auto-activates when the extra is installed and an OTLP endpoint is
+configured. `PLONE_OBSERVABILITY_OTEL_ENABLED` is the master on/off override.
+
+| Variable | Purpose |
+|---|---|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint (enables tracing) |
+| `OTEL_SERVICE_NAME` | Service name on emitted spans |
+| `OTEL_TRACES_SAMPLER` | Sampling strategy |
+| `PLONE_OBSERVABILITY_OTEL_ENABLED` | `1`/`0` master override |
+
+Add the WSGI middleware to your pipeline for the root request span:
+
+```ini
+[filter:opentelemetry]
+use = egg:plone.observability#opentelemetry
+```
+
+Emitted spans (depth: request + key Plone internals):
+
+- root request span (WSGI)
+- `ZPublisher.publish` — one per request, with `http.route`
+- `catalog.searchResults` / `catalog.unrestrictedSearchResults` — per catalog
+  query (standard Plone **and** plone-pgcatalog), with `plone.catalog.result_count`
+- `transaction.commit` — per ZODB transaction completion
+
+Application code can open child spans with the dependency-optional helper (a
+no-op when the extra is not installed):
+
+```python
+from plone.observability.spans import start_span
+
+with start_span("myapp.expensive_step", {"items": n}):
+    do_work()
+```
+
 ## Extensibility
 
 All components are registered via ZCA and can be extended or replaced by third-party packages.

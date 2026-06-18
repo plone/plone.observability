@@ -1,0 +1,66 @@
+"""ZPublisher pubevent subscribers producing a publishing span per request.
+
+The span starts on IPubStart, is attributed on IPubAfterTraversal, and ends on
+IPubSuccess/IPubFailure. It is stashed on request.environ because start and end
+happen in different subscribers. Catalog and commit spans (started elsewhere
+during the request) nest under it because it is made the current context.
+"""
+
+import logging
+
+from opentelemetry import context as otel_context
+from opentelemetry import trace
+from opentelemetry.trace import Status
+from opentelemetry.trace import StatusCode
+from opentelemetry.trace import set_span_in_context
+
+from plone.observability.otel.provider import TRACER_NAME
+from plone.observability.otel.provider import is_enabled
+
+
+logger = logging.getLogger(__name__)
+
+_SPAN_KEY = "plone.observability.otel.publish_span"
+_TOKEN_KEY = "plone.observability.otel.publish_token"
+
+
+def on_pub_start(event):
+    if not is_enabled():
+        return
+    tracer = trace.get_tracer(TRACER_NAME)
+    span = tracer.start_span("ZPublisher.publish")
+    token = otel_context.attach(set_span_in_context(span))
+    event.request.environ[_SPAN_KEY] = span
+    event.request.environ[_TOKEN_KEY] = token
+
+
+def on_after_traversal(event):
+    span = event.request.environ.get(_SPAN_KEY)
+    if span is None:
+        return
+    span.set_attribute("http.route", event.request.get("PATH_INFO", ""))
+    published = event.request.get("PUBLISHED", None)
+    if published is not None:
+        span.set_attribute("plone.published", type(published).__name__)
+
+
+def _finish(request, error=None):
+    span = request.environ.pop(_SPAN_KEY, None)
+    token = request.environ.pop(_TOKEN_KEY, None)
+    if token is not None:
+        otel_context.detach(token)
+    if span is None:
+        return
+    if error is not None:
+        span.set_status(Status(StatusCode.ERROR))
+        span.record_exception(error)
+    span.end()
+
+
+def on_pub_success(event):
+    _finish(event.request)
+
+
+def on_pub_failure(event):
+    error = event.exc_info[1] if event.exc_info else None
+    _finish(event.request, error=error)
