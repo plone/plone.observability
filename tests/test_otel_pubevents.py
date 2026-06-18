@@ -1,0 +1,60 @@
+from ZPublisher.pubevents import PubAfterTraversal
+from ZPublisher.pubevents import PubFailure
+from ZPublisher.pubevents import PubStart
+from ZPublisher.pubevents import PubSuccess
+
+
+class FakeRequest:
+    """Minimal request: pubevents need .environ and .get()."""
+
+    def __init__(self, path="/foo"):
+        self.environ = {}
+        self._data = {"PATH_INFO": path}
+
+    def get(self, key, default=None):
+        return self._data.get(key, default)
+
+
+def test_successful_publish_emits_span(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    from plone.observability.otel import pubevents
+
+    req = FakeRequest("/news")
+    pubevents.on_pub_start(PubStart(req))
+    pubevents.on_after_traversal(PubAfterTraversal(req))
+    pubevents.on_pub_success(PubSuccess(req))
+
+    spans = span_exporter.get_finished_spans()
+    names = [s.name for s in spans]
+    assert "ZPublisher.publish" in names
+    publish = next(s for s in spans if s.name == "ZPublisher.publish")
+    assert publish.attributes["http.route"] == "/news"
+    assert publish.status.status_code.name in ("OK", "UNSET")
+
+
+def test_failed_publish_marks_span_error(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    from plone.observability.otel import pubevents
+
+    req = FakeRequest("/boom")
+    pubevents.on_pub_start(PubStart(req))
+    try:
+        raise ValueError("kaboom")
+    except ValueError:
+        import sys
+
+        pubevents.on_pub_failure(PubFailure(req, sys.exc_info(), False))
+
+    spans = span_exporter.get_finished_spans()
+    publish = next(s for s in spans if s.name == "ZPublisher.publish")
+    assert publish.status.status_code.name == "ERROR"
+
+
+def test_publish_noop_when_disabled(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "0")
+    from plone.observability.otel import pubevents
+
+    req = FakeRequest("/x")
+    pubevents.on_pub_start(PubStart(req))
+    pubevents.on_pub_success(PubSuccess(req))
+    assert span_exporter.get_finished_spans() == ()
