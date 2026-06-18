@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "plone.observability"
-version = "1.0.0a1"
+version = "1.0.0b1"
 description = "Kubernetes-style health probes and metrics for Plone"
 readme = "README.md"
 license = "GPL-2.0-only"
@@ -13,7 +13,7 @@ authors = [
     { name = "Jens Klein", email = "jk@kleinundpartner.at" },
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Framework :: Plone",
     "Framework :: Plone :: 6.2",
     "Framework :: Zope",
