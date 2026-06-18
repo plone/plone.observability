@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv venv
-          uv pip install -c https://dist.plone.org/release/6.2-latest/constraints.txt -e ".[test]"
+          uv pip install -c https://dist.plone.org/release/6.2-latest/constraints.txt -e ".[test,opentelemetry]"
 
       - name: Run tests with coverage
         run: uv run pytest --cov --cov-report=
@@ -65,7 +65,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv venv
-          uv pip install -c https://dist.plone.org/release/6.2-latest/constraints.txt -e ".[test]"
+          uv pip install -c https://dist.plone.org/release/6.2-latest/constraints.txt -e ".[test,opentelemetry]"
 
       - uses: actions/download-artifact@v8
         with:
