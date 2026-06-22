@@ -35,6 +35,24 @@ class TestRequestTracker:
         assert tracker.duration_sum > 0
         assert tracker.request_count == 3
 
+    def test_record_separates_by_auth(self):
+        tracker = RequestTracker()
+        tracker.record(0.1, 200, authenticated=True)
+        tracker.record(0.2, 200, authenticated=False)
+        tracker.record(0.3, 500, authenticated=True)
+        assert tracker.stats_for("authenticated")["count"] == 2
+        assert tracker.stats_for("anonymous")["count"] == 1
+        assert tracker.stats_for("authenticated")["errors"][500] == 1
+        assert tracker.stats_for("anonymous")["errors"] == {}
+
+    def test_aggregate_properties_sum_both_classes(self):
+        tracker = RequestTracker()
+        tracker.record(0.1, 200, authenticated=True)
+        tracker.record(0.2, 503, authenticated=False)
+        assert tracker.request_count == 2
+        assert tracker.error_counts[503] == 1
+        assert tracker.duration_sum > 0
+
     def test_thread_safety(self):
         tracker = RequestTracker()
         errors = []

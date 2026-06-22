@@ -11,28 +11,66 @@ from plone.observability.metric import Metric
 DEFAULT_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
 
 
+AUTH_CLASSES = ("authenticated", "anonymous")
+
+
 class RequestTracker:
-    """Thread-safe request statistics tracker."""
+    """Thread-safe request statistics tracker, partitioned by auth class."""
 
     def __init__(self, buckets=DEFAULT_BUCKETS):
         self._lock = threading.Lock()
         self.buckets = buckets
-        self.request_count = 0
-        self.duration_sum = 0.0
-        self.bucket_counts = {b: 0 for b in buckets}
-        self.bucket_counts[float("inf")] = 0
-        self.error_counts = defaultdict(int)
+        self._stats = {auth: self._new_stats() for auth in AUTH_CLASSES}
 
-    def record(self, duration, status_code):
+    def _new_stats(self):
+        bucket_counts = {b: 0 for b in self.buckets}
+        bucket_counts[float("inf")] = 0
+        return {
+            "count": 0,
+            "duration_sum": 0.0,
+            "buckets": bucket_counts,
+            "errors": defaultdict(int),
+        }
+
+    def record(self, duration, status_code, authenticated=False):
+        key = "authenticated" if authenticated else "anonymous"
         with self._lock:
-            self.request_count += 1
-            self.duration_sum += duration
+            stats = self._stats[key]
+            stats["count"] += 1
+            stats["duration_sum"] += duration
             for bucket in self.buckets:
                 if duration <= bucket:
-                    self.bucket_counts[bucket] += 1
-            self.bucket_counts[float("inf")] += 1
+                    stats["buckets"][bucket] += 1
+            stats["buckets"][float("inf")] += 1
             if status_code >= 400:
-                self.error_counts[status_code] += 1
+                stats["errors"][status_code] += 1
+
+    def stats_for(self, auth):
+        return self._stats[auth]
+
+    @property
+    def request_count(self):
+        return sum(s["count"] for s in self._stats.values())
+
+    @property
+    def duration_sum(self):
+        return sum(s["duration_sum"] for s in self._stats.values())
+
+    @property
+    def error_counts(self):
+        merged = defaultdict(int)
+        for s in self._stats.values():
+            for code, count in s["errors"].items():
+                merged[code] += count
+        return merged
+
+    @property
+    def bucket_counts(self):
+        merged = {}
+        for s in self._stats.values():
+            for bucket, count in s["buckets"].items():
+                merged[bucket] = merged.get(bucket, 0) + count
+        return merged
 
 
 # Module-level singleton, shared across requests
