@@ -58,3 +58,53 @@ def test_publish_noop_when_disabled(span_exporter, monkeypatch):
     pubevents.on_pub_start(PubStart(req))
     pubevents.on_pub_success(PubSuccess(req))
     assert span_exporter.get_finished_spans() == ()
+
+
+def _auth_user(monkeypatch, name="alice", uid="alice-id"):
+    from plone.observability import auth
+
+    class _User:
+        def getUserName(self):
+            return name
+
+        def getId(self):
+            return uid
+
+    class _SM:
+        def getUser(self):
+            return _User()
+
+    monkeypatch.setattr(auth, "getSecurityManager", lambda: _SM())
+
+
+def test_span_sets_authenticated_attribute(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    monkeypatch.delenv("PLONE_OBSERVABILITY_OTEL_USER_ID", raising=False)
+    _auth_user(monkeypatch)
+    from plone.observability.otel import pubevents
+
+    req = FakeRequest("/x")
+    pubevents.on_pub_start(PubStart(req))
+    pubevents.on_pub_success(PubSuccess(req))
+
+    span = next(
+        s for s in span_exporter.get_finished_spans() if s.name == "ZPublisher.publish"
+    )
+    assert span.attributes["enduser.authenticated"] is True
+    assert "enduser.id" not in span.attributes  # opt-in is off
+
+
+def test_span_includes_user_id_when_opted_in(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_USER_ID", "1")
+    _auth_user(monkeypatch)
+    from plone.observability.otel import pubevents
+
+    req = FakeRequest("/x")
+    pubevents.on_pub_start(PubStart(req))
+    pubevents.on_pub_success(PubSuccess(req))
+
+    span = next(
+        s for s in span_exporter.get_finished_spans() if s.name == "ZPublisher.publish"
+    )
+    assert span.attributes["enduser.id"] == "alice-id"

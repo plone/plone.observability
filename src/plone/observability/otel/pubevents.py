@@ -7,18 +7,27 @@ during the request) nest under it because it is made the current context.
 """
 
 import logging
+import os
 
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.trace import Status
 from opentelemetry.trace import StatusCode
 from opentelemetry.trace import set_span_in_context
+from plone.base.utils import boolean_value
 
+from plone.observability.auth import get_auth_info
 from plone.observability.otel.provider import TRACER_NAME
 from plone.observability.otel.provider import is_enabled
 
 
 logger = logging.getLogger(__name__)
+
+
+def _user_id_enabled():
+    return boolean_value(
+        os.environ.get("PLONE_OBSERVABILITY_OTEL_USER_ID", ""), default=False
+    )
 
 _SPAN_KEY = "plone.observability.otel.publish_span"
 _TOKEN_KEY = "plone.observability.otel.publish_token"
@@ -51,6 +60,10 @@ def _finish(request, error=None):
         otel_context.detach(token)
     if span is None:
         return
+    authenticated, user_id = get_auth_info()
+    span.set_attribute("enduser.authenticated", authenticated)
+    if authenticated and user_id and _user_id_enabled():
+        span.set_attribute("enduser.id", str(user_id))
     if error is not None:
         span.set_status(Status(StatusCode.ERROR))
         span.record_exception(error)
