@@ -13,4 +13,14 @@
       handler=".startup.on_process_starting"
       />
 
+  <subscriber
+      for="ZPublisher.interfaces.IPubSuccess"
+      handler=".auth.capture_auth"
+      />
+
+  <subscriber
+      for="ZPublisher.interfaces.IPubFailure"
+      handler=".auth.capture_auth"
+      />
+
 </configure>

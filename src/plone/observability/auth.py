@@ -16,3 +16,13 @@ def get_auth_info():
     if user is None or user.getUserName() == "Anonymous User":
         return False, None
     return True, user.getId()
+
+
+def capture_auth(event):
+    """Pubevent subscriber: stash the auth boolean on the request environ.
+
+    Runs while the security context is live (IPubSuccess/IPubFailure) so the
+    WSGI middleware can read it after publication teardown.
+    """
+    authenticated, _ = get_auth_info()
+    event.request.environ[ENVIRON_KEY] = authenticated

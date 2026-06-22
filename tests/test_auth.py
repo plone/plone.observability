@@ -45,3 +45,25 @@ def test_no_user_is_anonymous(monkeypatch):
 
     monkeypatch.setattr(auth, "getSecurityManager", lambda: FakeSecurityManager(None))
     assert auth.get_auth_info() == (False, None)
+
+
+def test_capture_auth_sets_environ_flag(monkeypatch):
+    from plone.observability import auth
+
+    monkeypatch.setattr(
+        auth,
+        "getSecurityManager",
+        lambda: FakeSecurityManager(FakeUser("alice", "alice-id")),
+    )
+
+    class FakeRequest:
+        def __init__(self):
+            self.environ = {}
+
+    class FakeEvent:
+        def __init__(self, request):
+            self.request = request
+
+    request = FakeRequest()
+    auth.capture_auth(FakeEvent(request))
+    assert request.environ["plone.observability.authenticated"] is True
