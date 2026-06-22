@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b2 (2026-06-22)
+
+### Documentation:
+
+- Document the recommended way to wire the WSGI filters (request metrics and the OpenTelemetry root request span) via cookiecutter-zope-instance 3.1.0+ `wsgi_filters`, instead of hand-editing `zope.ini`.
+
+
 ## 1.0.0b1 (2026-06-18)
 
 ### New features:
