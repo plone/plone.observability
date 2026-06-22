@@ -117,50 +117,56 @@ class RequestMetricProvider:
         self.context = context
 
     def collect(self):
-        yield Metric(
-            name="plone_requests_total",
-            value=tracker.request_count,
-            type="counter",
-            scope="instance",
-            help="Total number of HTTP requests",
-        )
+        for auth in AUTH_CLASSES:
+            stats = tracker.stats_for(auth)
 
-        yield Metric(
-            name="plone_request_duration_seconds_sum",
-            value=round(tracker.duration_sum, 4),
-            type="counter",
-            scope="instance",
-            help="Total request duration in seconds",
-        )
-
-        yield Metric(
-            name="plone_request_duration_seconds_count",
-            value=tracker.request_count,
-            type="counter",
-            scope="instance",
-            help="Total number of requests (histogram count)",
-        )
-
-        for bucket, count in sorted(tracker.bucket_counts.items()):
-            le = "+Inf" if bucket == float("inf") else str(bucket)
             yield Metric(
-                name="plone_request_duration_seconds_bucket",
-                value=count,
+                name="plone_requests_total",
+                value=stats["count"],
                 type="counter",
                 scope="instance",
-                help="Request duration histogram bucket",
-                labels={"le": le},
+                help="Total number of HTTP requests",
+                labels={"auth": auth},
             )
 
-        for status_code, count in sorted(tracker.error_counts.items()):
             yield Metric(
-                name="plone_request_errors",
-                value=count,
+                name="plone_request_duration_seconds_sum",
+                value=round(stats["duration_sum"], 4),
                 type="counter",
                 scope="instance",
-                help="Total HTTP errors by status code",
-                labels={"status_code": str(status_code)},
+                help="Total request duration in seconds",
+                labels={"auth": auth},
             )
+
+            yield Metric(
+                name="plone_request_duration_seconds_count",
+                value=stats["count"],
+                type="counter",
+                scope="instance",
+                help="Total number of requests (histogram count)",
+                labels={"auth": auth},
+            )
+
+            for bucket, count in sorted(stats["buckets"].items()):
+                le = "+Inf" if bucket == float("inf") else str(bucket)
+                yield Metric(
+                    name="plone_request_duration_seconds_bucket",
+                    value=count,
+                    type="counter",
+                    scope="instance",
+                    help="Request duration histogram bucket",
+                    labels={"le": le, "auth": auth},
+                )
+
+            for status_code, count in sorted(stats["errors"].items()):
+                yield Metric(
+                    name="plone_request_errors",
+                    value=count,
+                    type="counter",
+                    scope="instance",
+                    help="Total HTTP errors by status code",
+                    labels={"status_code": str(status_code), "auth": auth},
+                )
 
 
 def make_filter(app, global_conf, **local_conf):

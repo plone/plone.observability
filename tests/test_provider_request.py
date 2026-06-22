@@ -98,6 +98,29 @@ class TestMiddlewareAuth:
         assert delta == 0
 
 
+class TestProviderAuthLabel:
+    def test_all_request_metrics_carry_auth_label(self):
+        from plone.observability.metrics.providers.request import (
+            RequestMetricProvider,
+            tracker,
+        )
+
+        tracker.record(0.1, 200, authenticated=True)
+        tracker.record(0.2, 500, authenticated=False)
+
+        metrics = list(RequestMetricProvider(FakeApp()).collect())
+        totals = [m for m in metrics if m.name == "plone_requests_total"]
+        auth_values = {m.labels["auth"] for m in totals}
+        assert auth_values == {"authenticated", "anonymous"}
+
+        errors = [m for m in metrics if m.name == "plone_request_errors"]
+        assert all("auth" in m.labels for m in errors)
+        buckets = [
+            m for m in metrics if m.name == "plone_request_duration_seconds_bucket"
+        ]
+        assert all("auth" in m.labels and "le" in m.labels for m in buckets)
+
+
 class TestRequestMetricProvider:
     def test_implements_interface(self):
         provider = RequestMetricProvider(FakeApp())
