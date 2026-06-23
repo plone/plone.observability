@@ -9,11 +9,6 @@
   <include package=".otel" zcml:condition="installed opentelemetry.sdk" />
 
   <subscriber
-      for="zope.processlifetime.IProcessStarting"
-      handler=".startup.on_process_starting"
-      />
-
-  <subscriber
       for="ZPublisher.interfaces.IPubSuccess"
       handler=".auth.capture_auth"
       />
