@@ -77,3 +77,16 @@ class TestHealthServer:
             server.start()
             assert server._thread is None
             server.stop()
+
+
+def test_start_is_non_fatal_on_bind_error(monkeypatch):
+    from plone.observability.health import server as server_mod
+    from plone.observability.health.server import HealthServer
+
+    def boom(*args, **kwargs):
+        raise OSError("Address already in use")
+
+    monkeypatch.setattr(server_mod, "ThreadingHTTPServer", boom)
+    hs = HealthServer(port=8099)
+    hs.start()  # must not raise
+    assert hs._httpd is None

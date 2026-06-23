@@ -97,7 +97,16 @@ class HealthServer:
         if self.port == 0:
             logger.info("Health server disabled (port=0)")
             return
-        self._httpd = ThreadingHTTPServer((self.host, self.port), HealthRequestHandler)
+        try:
+            self._httpd = ThreadingHTTPServer(
+                (self.host, self.port), HealthRequestHandler
+            )
+        except OSError as exc:
+            logger.error(
+                "Health server could not bind %s:%s: %s", self.host, self.port, exc
+            )
+            self._httpd = None
+            return
         self._httpd.health_server = self
         self._thread = threading.Thread(
             target=self._httpd.serve_forever,
