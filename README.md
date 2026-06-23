@@ -43,6 +43,8 @@ All configuration is done via environment variables.
 
 The health server runs on a dedicated port (default `8081`) in a background daemon thread, separate from the Zope WSGI server. This means it answers even when all Zope threads are busy.
 
+The health server is started by the `egg:plone.observability#healthserver` WSGI filter — add it to your pipeline (see [WSGI filters](#wsgi-middleware-for-request-metrics) below). It is **not** started on Zope process startup, so `zconsole`/script runs never touch the health port.
+
 ### Endpoints
 
 | Path | Purpose |
@@ -209,6 +211,8 @@ in your `instance.yaml`:
 ```yaml
 default_context:
     wsgi_filters:
+        healthserver:
+            use: "egg:plone.observability#healthserver"
         observability:
             use: "egg:plone.observability#observability"
         opentelemetry:
@@ -218,17 +222,21 @@ default_context:
 This renders the `[filter:*]` sections and wires them into `[pipeline:main]` on
 regeneration. Each entry also accepts `options` (extra `key: value` lines) and
 `position` (`outer`, the default, or `inner`). See that project's
-"Add WSGI middleware to the pipeline" how-to. Drop the `opentelemetry` entry if
-you do not use the tracing extra.
+"Add WSGI middleware to the pipeline" how-to. `healthserver` starts the health
+probe server; drop the `opentelemetry` entry if you do not use the tracing extra.
 
 ### Using PasteDeploy directly (hand-written zope.ini)
 
 ```ini
 [pipeline:main]
 pipeline =
+    healthserver
     egg:plone.observability#observability
     ...
     Zope
+
+[filter:healthserver]
+use = egg:plone.observability#healthserver
 
 [filter:observability]
 use = egg:plone.observability#observability
