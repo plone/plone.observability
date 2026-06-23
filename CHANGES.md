@@ -2,6 +2,17 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b4 (2026-06-24)
+
+### Breaking changes:
+
+- The health server and OpenTelemetry activation now start from the WSGI pipeline filters instead of Zope process startup, so `zconsole`/script runs no longer bind the health port or patch the catalog. **Upgrade:** add the `egg:plone.observability#healthserver` filter to your pipeline, otherwise the health server no longer starts. ([#16](https://github.com/plone/plone.observability/issues/16))
+
+### Bug fixes:
+
+- Emit `plone_info` as a `gauge` instead of the OpenMetrics-only `info` type. The `@@metrics` endpoint advertises classic Prometheus exposition format (`text/plain; version=0.0.4`), in which `info` is invalid, so Prometheus rejected the **entire** scrape with `invalid metric type "info"`. `plone_info` now follows the conventional `*_info` gauge pattern (constant value 1, version in labels). ([#18](https://github.com/plone/plone.observability/issues/18))
+
+
 ## 1.0.0b3 (2026-06-22)
 
 ### New features:
