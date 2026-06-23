@@ -29,7 +29,7 @@ class TestZopeRuntimeMetricProvider:
         metrics = {m.name: m for m in provider.collect()}
         assert "plone_info" in metrics
         info = metrics["plone_info"]
-        assert info.type == "info"
+        assert info.type == "gauge"
         assert "python_version" in info.labels
         assert "zope_version" in info.labels
 

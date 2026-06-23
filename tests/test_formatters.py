@@ -41,14 +41,14 @@ class TestPrometheusFormatter:
             Metric(
                 name="plone_info",
                 value=1,
-                type="info",
+                type="gauge",
                 scope="instance",
                 help="Version information",
                 labels={"plone_version": "6.1.0", "zope_version": "5.11"},
             ),
         ]
         result = formatter.format(metrics)
-        assert "# TYPE plone_info info" in result
+        assert "# TYPE plone_info gauge" in result
         assert 'plone_version="6.1.0"' in result
 
     def test_content_type(self):

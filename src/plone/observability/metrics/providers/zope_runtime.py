@@ -46,7 +46,10 @@ class ZopeRuntimeMetricProvider:
         yield Metric(
             name="plone_info",
             value=1,
-            type="info",
+            # Classic Prometheus text format (v0.0.4) has no "info" type; that
+            # only exists in OpenMetrics. Use the conventional `*_info` gauge
+            # (constant value 1, detail carried in labels), like python_info.
+            type="gauge",
             scope="instance",
             help="Version information",
             labels={
