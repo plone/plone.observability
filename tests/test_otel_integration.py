@@ -36,30 +36,27 @@ def test_otel_zcml_registers_pubevent_subscribers(zcml_loaded):
     assert pubevents.on_pub_start in handlers
 
 
-def test_startup_activates_when_enabled(monkeypatch):
-    from plone.observability.otel import startup
+def test_filter_activates_when_enabled(monkeypatch):
+    from plone.observability.otel import catalog
     from plone.observability.otel import provider
+    from plone.observability.otel import wsgi
+    from plone.observability.otel import zodb
 
     monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
     calls = []
     monkeypatch.setattr(provider, "setup_tracing", lambda: calls.append("setup"))
-    monkeypatch.setattr(
-        "plone.observability.otel.zodb.register", lambda: calls.append("zodb")
-    )
-    monkeypatch.setattr(
-        "plone.observability.otel.catalog.instrument_catalog",
-        lambda: calls.append("catalog"),
-    )
-    startup.on_process_starting(object())
+    monkeypatch.setattr(zodb, "register", lambda: calls.append("zodb"))
+    monkeypatch.setattr(catalog, "instrument_catalog", lambda: calls.append("catalog"))
+    wsgi.make_filter(object(), {})
     assert calls == ["setup", "zodb", "catalog"]
 
 
-def test_startup_skips_when_disabled(monkeypatch):
-    from plone.observability.otel import startup
+def test_filter_skips_when_disabled(monkeypatch):
     from plone.observability.otel import provider
+    from plone.observability.otel import wsgi
 
     monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "0")
     calls = []
     monkeypatch.setattr(provider, "setup_tracing", lambda: calls.append("setup"))
-    startup.on_process_starting(object())
+    wsgi.make_filter(object(), {})
     assert calls == []

@@ -3,11 +3,6 @@
     i18n_domain="plone.observability">
 
   <subscriber
-      for="zope.processlifetime.IProcessStarting"
-      handler=".startup.on_process_starting"
-      />
-
-  <subscriber
       for="ZPublisher.interfaces.IPubStart"
       handler=".pubevents.on_pub_start"
       />
