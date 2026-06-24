@@ -38,6 +38,7 @@ All configuration is done via environment variables.
 | `PLONE_OBSERVABILITY_METRICS_ALLOWLIST` | *(empty, open)* | Comma-separated CIDRs allowed to access `@@metrics`. Empty means all IPs are allowed. |
 | `PLONE_OBSERVABILITY_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated CIDRs of trusted reverse proxies for `X-Forwarded-For` resolution. |
 | `PLONE_OBSERVABILITY_METRICS_CACHE_TTL` | `60` | Seconds to cache content catalog metrics (expensive to collect). |
+| `PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR` | `1` | Install a minimal ZODB activity monitor for load/store counters. Set `0` to disable. |
 
 ## Health Probes
 
@@ -132,6 +133,8 @@ The default format is Prometheus text. Pass `?format=json` or an `Accept: applic
 | `plone_zodb_connections` | gauge | instance | Open ZODB connections |
 | `plone_zodb_cache_size` | gauge | instance | Objects in the ZODB object cache |
 | `plone_zodb_cache_size_bytes` | gauge | instance | ZODB object cache size in bytes |
+| `plone_zodb_loads_total` | counter | instance | Cumulative objects loaded from storage (storage-agnostic; via the ZODB activity monitor) |
+| `plone_zodb_stores_total` | counter | instance | Cumulative objects stored to storage (storage-agnostic; via the ZODB activity monitor) |
 | `plone_content_total` | gauge | global | Content objects by portal type and site |
 | `plone_content_by_state` | gauge | global | Content objects by workflow state and site |
 
@@ -145,6 +148,16 @@ Metrics carry a `scope` label with value `"global"` or `"instance"`.
 
 - **global** — the value is the same across all Plone instances sharing the same ZODB (e.g. object count, content totals). When aggregating in Prometheus, avoid double-counting by filtering to a single instance.
 - **instance** — the value is specific to this process (e.g. request counts, RSS). Sum across instances when aggregating.
+
+### ZODB load/store metrics
+
+`plone_zodb_loads_total` / `plone_zodb_stores_total` are produced by a minimal ZODB activity monitor that plone.observability installs into the database's activity-monitor slot on the first metrics scrape. It is storage-agnostic (works on FileStorage, RelStorage, zodb-pgjsonb), cumulative, and O(1) in memory. Use `rate(...)` in queries — e.g. `rate(plone_zodb_loads_total[5m])`, or `rate(plone_zodb_loads_total) / rate(plone_requests_total)` as a "loads per request" smell detector.
+
+It is installed **only if no activity monitor is already configured** — a pre-existing monitor is never overridden (a warning is logged and the two counters are then unavailable). Disable installation entirely with `PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR=0`.
+
+### Content metrics and catalog backends
+
+`plone_content_total` / `plone_content_by_state` are produced from the ZCatalog index API and are therefore **ZCatalog-only**. On other catalog backends (e.g. plone-pgcatalog) the generic provider yields nothing; the backend package ships its own `IMetricProvider` with the same metric names (see [Extensibility](#extensibility)).
 
 ### Prometheus scrape configuration
 
