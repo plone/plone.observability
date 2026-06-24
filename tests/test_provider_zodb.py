@@ -15,6 +15,13 @@ class FakeDB:
     database_name = "main"
     pool = FakePool()
     storage = FakeStorage()
+    _activity_monitor = None
+
+    def getActivityMonitor(self):
+        return self._activity_monitor
+
+    def setActivityMonitor(self, monitor):
+        self._activity_monitor = monitor
 
     def objectCount(self):
         return 5000
@@ -38,7 +45,8 @@ class FakeJar:
 
 
 class FakeApp:
-    _p_jar = FakeJar()
+    def __init__(self):
+        self._p_jar = FakeJar()
 
 
 class TestZODBMetricProvider:
@@ -155,3 +163,39 @@ class TestEnsureActivityMonitor:
         zodb._ensure_activity_monitor(db)
         assert db.getActivityMonitor() is foreign
         assert zodb._monitor is None
+
+
+class TestZODBLoadStoreMetrics:
+    def test_emits_loads_stores_counters(self, monkeypatch):
+        from plone.observability.metrics.providers import zodb
+
+        monkeypatch.setattr(zodb, "_monitor", None)
+        monkeypatch.setattr(zodb, "_warned_foreign", False)
+        monkeypatch.delenv("PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR", raising=False)
+
+        provider = zodb.ZODBMetricProvider(FakeApp())
+        list(provider.collect())  # triggers lazy install on FakeDB
+
+        zodb._monitor.loads = 42
+        zodb._monitor.stores = 7
+
+        metrics = {m.name: m for m in provider.collect()}
+        assert metrics["plone_zodb_loads_total"].value == 42
+        assert metrics["plone_zodb_loads_total"].type == "counter"
+        assert metrics["plone_zodb_loads_total"].scope == "instance"
+        assert metrics["plone_zodb_stores_total"].value == 7
+        assert "database" in metrics["plone_zodb_loads_total"].labels
+
+    def test_no_loads_counters_when_foreign_monitor(self, monkeypatch):
+        from plone.observability.metrics.providers import zodb
+
+        monkeypatch.setattr(zodb, "_monitor", None)
+        monkeypatch.setattr(zodb, "_warned_foreign", False)
+
+        app = FakeApp()
+        app._p_jar.db()._activity_monitor = object()  # foreign monitor present
+
+        provider = zodb.ZODBMetricProvider(app)
+        metrics = {m.name: m for m in provider.collect()}
+        assert "plone_zodb_loads_total" not in metrics
+        assert "plone_zodb_stores_total" not in metrics

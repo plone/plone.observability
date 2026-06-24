@@ -146,22 +146,22 @@ class ZODBMetricProvider:
             labels=labels,
         )
 
-        # Storage-level metrics (if available)
-        storage = db.storage
-        if hasattr(storage, "getTransactionCount"):
+        # Load/store activity (storage-agnostic, via our activity monitor)
+        _ensure_activity_monitor(db)
+        if _monitor is not None:
             yield Metric(
-                name="plone_zodb_loads",
-                value=getattr(storage, "_loads", 0),
+                name="plone_zodb_loads_total",
+                value=_monitor.loads,
                 type="counter",
                 scope="instance",
-                help="Total number of object loads from storage",
+                help="Cumulative objects loaded from storage since monitor install",
                 labels=labels,
             )
             yield Metric(
-                name="plone_zodb_stores",
-                value=getattr(storage, "_stores", 0),
+                name="plone_zodb_stores_total",
+                value=_monitor.stores,
                 type="counter",
                 scope="instance",
-                help="Total number of object stores to storage",
+                help="Cumulative objects stored to storage since monitor install",
                 labels=labels,
             )
