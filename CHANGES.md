@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b5 (2026-06-24)
+
+### Bug fixes:
+
+- Declare the `z3c.autoinclude.plugin` entry point (`target = plone`) so the package's ZCML — the `@@metrics` view, metric providers, OpenTelemetry and auth subscribers, and the `zodb` readiness check — loads automatically on a standard Plone instance instead of staying dormant after `pip install`. ([#21](https://github.com/plone/plone.observability/issues/21))
+
+
 ## 1.0.0b4 (2026-06-24)
 
 ### Breaking changes:
