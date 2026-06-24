@@ -61,6 +61,9 @@ observability = "plone.observability.metrics.providers.request:make_filter"
 opentelemetry = "plone.observability.otel.wsgi:make_filter"
 healthserver = "plone.observability.health.wsgi:make_filter"
 
+[project.entry-points."z3c.autoinclude.plugin"]
+target = "plone"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/plone"]
 
