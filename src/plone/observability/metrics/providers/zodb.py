@@ -1,4 +1,6 @@
 import logging
+import os
+import threading
 
 from zope.interface import implementer
 
@@ -6,6 +8,31 @@ from plone.observability.interfaces import IMetricProvider
 from plone.observability.metric import Metric
 
 logger = logging.getLogger(__name__)
+
+
+class LoadStoreActivityMonitor:
+    """Minimal ZODB activity monitor: cumulative load/store totals.
+
+    Installed in the DB's single activity-monitor slot. ZODB calls
+    closedConnection() on every connection close (~once per request); we read
+    and reset the connection's transfer counts and add them to process-wide
+    totals. O(1) memory, no history log.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.loads = 0
+        self.stores = 0
+
+    def closedConnection(self, conn):
+        loads, stores = conn.getTransferCounts(True)  # read and reset
+        with self._lock:
+            self.loads += loads
+            self.stores += stores
+
+    def getActivityAnalysis(self, start=0, end=0, divisions=10):
+        # Part of ZODB's activity-monitor API surface; unused here.
+        return []
 
 
 @implementer(IMetricProvider)

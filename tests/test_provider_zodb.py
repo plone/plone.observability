@@ -89,3 +89,24 @@ class TestZODBMetricProvider:
         provider = ZODBMetricProvider(NoJarApp())
         metrics = list(provider.collect())
         assert metrics == []
+
+
+class TestLoadStoreActivityMonitor:
+    def test_accumulates_transfer_counts(self):
+        from plone.observability.metrics.providers.zodb import (
+            LoadStoreActivityMonitor,
+        )
+
+        class FakeConn:
+            def __init__(self, counts):
+                self._counts = list(counts)
+
+            def getTransferCounts(self, clear=False):
+                return self._counts.pop(0)
+
+        mon = LoadStoreActivityMonitor()
+        conn = FakeConn([(3, 1), (2, 0)])
+        mon.closedConnection(conn)
+        mon.closedConnection(conn)
+        assert mon.loads == 5
+        assert mon.stores == 1
