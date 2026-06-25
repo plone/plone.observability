@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b7 (2026-06-25)
+
+### New features:
+
+- Add `plone_request_duration_seconds_max{auth="authenticated|anonymous"}` — a per-scrape-window gauge of the worst-case request duration. A histogram can only bound latency to its bucket edges, so the true maximum is now tracked directly and reset on every scrape, giving operators the real max backend response time alongside the `histogram_quantile`-derived p90/p99. ([#17](https://github.com/plone/plone.observability/issues/17))
+
+
 ## 1.0.0b6 (2026-06-25)
 
 ### New features:
