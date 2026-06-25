@@ -7,3 +7,7 @@ build/
 .venv/
 *.egg
 .tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
