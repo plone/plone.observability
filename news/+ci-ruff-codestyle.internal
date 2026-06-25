@@ -1,1 +1,0 @@
-Adopt the shared ruff ruleset (single-line imports, B/SIM/UP/C4, py310 target), format ZCML with zpretty, run pre-commit as the single source in CI, and gate test coverage at 90%%.
