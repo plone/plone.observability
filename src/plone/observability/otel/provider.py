@@ -1,8 +1,8 @@
 """TracerProvider bootstrap and activation gating for the OTel extra."""
 
-import os
-
 from plone.base.utils import boolean_value
+
+import os
 
 
 TRACER_NAME = "plone.observability"
@@ -36,12 +36,10 @@ def setup_tracing():
     if _ACTIVE:
         return
     from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-        OTLPSpanExporter,
-    )
 
     provider = TracerProvider(resource=Resource.create())
     provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))

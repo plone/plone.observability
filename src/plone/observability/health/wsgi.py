@@ -5,13 +5,12 @@ zconsole/scripts load zope.conf via make_wsgi_app and never build the pipeline.
 So this filter is a serving-only hook and never runs under zconsole.
 """
 
-import logging
-
-import Zope2
-from zope.component import queryUtility
-
 from plone.observability.health.server import HealthServer
 from plone.observability.interfaces import IReadinessCheck
+from zope.component import queryUtility
+
+import logging
+import Zope2
 
 
 logger = logging.getLogger(__name__)

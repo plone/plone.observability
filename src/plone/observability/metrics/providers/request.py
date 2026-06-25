@@ -1,11 +1,11 @@
-import threading
-import time
 from collections import defaultdict
-
-from zope.interface import implementer
-
 from plone.observability.interfaces import IMetricProvider
 from plone.observability.metric import Metric
+from zope.interface import implementer
+
+import threading
+import time
+
 
 # Default histogram buckets (in seconds), matching Prometheus defaults
 DEFAULT_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
@@ -23,7 +23,7 @@ class RequestTracker:
         self._stats = {auth: self._new_stats() for auth in AUTH_CLASSES}
 
     def _new_stats(self):
-        bucket_counts = {b: 0 for b in self.buckets}
+        bucket_counts = dict.fromkeys(self.buckets, 0)
         bucket_counts[float("inf")] = 0
         return {
             "count": 0,

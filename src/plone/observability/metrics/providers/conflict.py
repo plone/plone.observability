@@ -1,11 +1,10 @@
-import threading
 from collections import defaultdict
-
-from zope.interface import implementer
-from ZODB.POSException import ConflictError
-
 from plone.observability.interfaces import IMetricProvider
 from plone.observability.metric import Metric
+from ZODB.POSException import ConflictError
+from zope.interface import implementer
+
+import threading
 
 
 class ConflictTracker:

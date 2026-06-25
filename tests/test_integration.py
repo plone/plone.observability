@@ -1,16 +1,14 @@
 """Integration tests verifying ZCA registrations work together."""
 
-import json
-
-import pytest
-
+from plone.observability.interfaces import IMetricFormatter
+from plone.observability.interfaces import IReadinessCheck
+from plone.observability.metric import Metric
 from zope.component import getUtilitiesFor
 from zope.component import queryUtility
 from zope.configuration import xmlconfig
 
-from plone.observability.interfaces import IMetricFormatter
-from plone.observability.interfaces import IReadinessCheck
-from plone.observability.metric import Metric
+import json
+import pytest
 
 
 @pytest.fixture(scope="module")
@@ -21,9 +19,10 @@ def zcml_loaded():
     ``zope`` and ``browser`` namespaces before loading plone.observability's
     own configuration.
     """
+    from zope.configuration.config import ConfigurationMachine
+
     import Products.Five
     import zope.component
-    from zope.configuration.config import ConfigurationMachine
 
     context = ConfigurationMachine()
     xmlconfig.registerCommonDirectives(context)
@@ -133,22 +132,20 @@ class TestZCARegistrations:
 class TestConflictRegistration:
     def test_conflict_provider_registered(self, zcml_loaded):
         from OFS.interfaces import IApplication
-        from zope.component import getGlobalSiteManager
-
         from plone.observability.interfaces import IMetricProvider
         from plone.observability.metrics.providers.conflict import (
             ConflictMetricProvider,
         )
+        from zope.component import getGlobalSiteManager
 
         gsm = getGlobalSiteManager()
         adapter = gsm.adapters.lookup((IApplication,), IMetricProvider, name="conflict")
         assert adapter is ConflictMetricProvider
 
     def test_conflict_subscriber_registered(self, zcml_loaded):
+        from plone.observability.metrics.providers import conflict
         from zope.component import getGlobalSiteManager
         from ZPublisher.interfaces import IPubBeforeAbort
-
-        from plone.observability.metrics.providers import conflict
 
         gsm = getGlobalSiteManager()
         handlers = [

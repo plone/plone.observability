@@ -1,9 +1,8 @@
 """ZODB commit span via a transaction synchronizer (no monkeypatching)."""
 
 from opentelemetry import trace
-
-from plone.observability.otel.provider import TRACER_NAME
 from plone.observability.otel.provider import is_enabled
+from plone.observability.otel.provider import TRACER_NAME
 
 
 class CommitTracer:

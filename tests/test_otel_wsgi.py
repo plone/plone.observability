@@ -21,7 +21,10 @@ def test_make_filter_creates_server_span(span_exporter):
 
 
 def test_make_filter_activates_when_enabled(monkeypatch):
-    from plone.observability.otel import catalog, provider, wsgi, zodb
+    from plone.observability.otel import catalog
+    from plone.observability.otel import provider
+    from plone.observability.otel import wsgi
+    from plone.observability.otel import zodb
 
     monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
     calls = []
@@ -36,7 +39,8 @@ def test_make_filter_activates_when_enabled(monkeypatch):
 
 
 def test_make_filter_skips_activation_when_disabled(monkeypatch):
-    from plone.observability.otel import provider, wsgi
+    from plone.observability.otel import provider
+    from plone.observability.otel import wsgi
 
     monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "0")
     calls = []

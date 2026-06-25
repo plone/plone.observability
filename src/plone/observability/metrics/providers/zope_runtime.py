@@ -1,14 +1,13 @@
+from importlib.metadata import distribution
+from importlib.metadata import PackageNotFoundError
+from plone.observability.interfaces import IMetricProvider
+from plone.observability.metric import Metric
+from zope.interface import implementer
+
 import logging
 import threading
 import time
 
-from importlib.metadata import distribution
-from importlib.metadata import PackageNotFoundError
-
-from zope.interface import implementer
-
-from plone.observability.interfaces import IMetricProvider
-from plone.observability.metric import Metric
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
-import logging
-
+from plone.observability.interfaces import IReadinessCheck
 from zope.interface import implementer
 
-from plone.observability.interfaces import IReadinessCheck
+import logging
+
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,6 @@
+from plone.observability.interfaces import IMetricProvider
 from ZODB.POSException import ConflictError
 from ZODB.POSException import ReadConflictError
-
-from plone.observability.interfaces import IMetricProvider
 from zope.interface.verify import verifyObject
 
 

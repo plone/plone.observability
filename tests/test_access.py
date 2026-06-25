@@ -1,7 +1,7 @@
-import os
+from plone.observability.metrics.access import is_allowed
 from unittest import mock
 
-from plone.observability.metrics.access import is_allowed
+import os
 
 
 class TestIsAllowed:
@@ -62,3 +62,29 @@ class TestIsAllowed:
         with mock.patch.dict(os.environ, env, clear=True):
             # 127.0.0.1 is trusted by default
             assert is_allowed("127.0.0.1", headers) is True
+
+
+class TestGetClientIP:
+    def test_trusted_peer_without_forwarded_returns_peer(self):
+        from plone.observability.metrics.access import _get_client_ip
+
+        env = {"PLONE_OBSERVABILITY_TRUSTED_PROXIES": "127.0.0.1"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            assert _get_client_ip("127.0.0.1", {}) == "127.0.0.1"
+
+    def test_skips_invalid_ip_in_forwarded_chain(self):
+        from plone.observability.metrics.access import _get_client_ip
+
+        env = {"PLONE_OBSERVABILITY_TRUSTED_PROXIES": "127.0.0.1"}
+        # "garbage" is last → first in the right-to-left walk → must be skipped
+        headers = {"X-Forwarded-For": "1.2.3.4, garbage"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            assert _get_client_ip("127.0.0.1", headers) == "1.2.3.4"
+
+    def test_all_forwarded_trusted_returns_peer(self):
+        from plone.observability.metrics.access import _get_client_ip
+
+        env = {"PLONE_OBSERVABILITY_TRUSTED_PROXIES": "10.0.0.0/8"}
+        headers = {"X-Forwarded-For": "10.0.0.2, 10.0.0.3"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            assert _get_client_ip("10.0.0.1", headers) == "10.0.0.1"

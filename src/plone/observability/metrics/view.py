@@ -1,10 +1,12 @@
+from plone.observability.interfaces import IMetricFormatter
+from plone.observability.interfaces import IMetricProvider
+from plone.observability.metrics.access import is_allowed
+from Products.Five import BrowserView
+from zope.component import getAdapters
+from zope.component import queryUtility
+
 import logging
 
-from Products.Five import BrowserView
-from zope.component import getAdapters, queryUtility
-
-from plone.observability.interfaces import IMetricFormatter, IMetricProvider
-from plone.observability.metrics.access import is_allowed
 
 logger = logging.getLogger(__name__)
 

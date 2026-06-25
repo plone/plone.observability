@@ -33,6 +33,7 @@ def test_is_enabled_off_by_default(monkeypatch):
 
 def test_setup_tracing_builds_provider_and_is_idempotent(monkeypatch):
     from plone.observability.otel import provider
+
     import opentelemetry.trace as trace
 
     monkeypatch.setattr(provider, "_ACTIVE", False)

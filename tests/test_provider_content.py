@@ -1,7 +1,6 @@
-from unittest import mock
-
 from plone.observability.interfaces import IMetricProvider
 from plone.observability.metrics.providers.content import ContentMetricProvider
+from unittest import mock
 from zope.interface.verify import verifyObject
 
 
@@ -122,11 +121,8 @@ class TestContentMetricProvider:
 
 class TestContentProviderStepsAside:
     def test_non_zcatalog_yields_nothing_without_raising(self):
+        from plone.observability.metrics.providers.content import ContentMetricProvider
         from unittest import mock
-
-        from plone.observability.metrics.providers.content import (
-            ContentMetricProvider,
-        )
 
         class WeirdCatalog:
             @property
@@ -147,3 +143,65 @@ class TestContentProviderStepsAside:
             provider = ContentMetricProvider(object())
             metrics = list(provider.collect())
         assert metrics == []
+
+
+class TestContentProviderCoverage:
+    def test_find_plone_sites_filters_by_interface(self):
+        from plone.observability.metrics.providers.content import _find_plone_sites
+        from Products.CMFPlone.interfaces import IPloneSiteRoot
+        from zope.interface import alsoProvides
+
+        class Obj:
+            pass
+
+        site = Obj()
+        alsoProvides(site, IPloneSiteRoot)
+        other = Obj()
+
+        class App:
+            def objectValues(self):
+                return [site, other]
+
+        assert _find_plone_sites(App()) == [site]
+
+    def test_collect_uses_cache_on_second_call(self):
+        from plone.observability.metrics.providers.content import ContentMetricProvider
+
+        provider = ContentMetricProvider(object())
+        calls = {"n": 0}
+
+        def fresh():
+            calls["n"] += 1
+            return iter([])
+
+        provider._collect_fresh = fresh
+        list(provider.collect())
+        list(provider.collect())
+        assert calls["n"] == 1  # second call served from cache
+
+    def test_skips_site_without_catalog(self, monkeypatch):
+        from plone.observability.metrics.providers import content
+
+        class Site:
+            id = "Plone"
+
+            def unrestrictedTraverse(self, path, default=None):
+                return default  # no portal_catalog
+
+        monkeypatch.setattr(content, "_find_plone_sites", lambda app: [Site()])
+        provider = content.ContentMetricProvider(object())
+        assert list(provider.collect()) == []
+
+    def test_emits_review_state_metrics(self, monkeypatch):
+        from plone.observability.metrics.providers import content
+
+        site = FakeSite(
+            FakeCatalog(
+                portal_type_values=[("Document", 3)],
+                review_state_values=[("published", 2), ("private", 1)],
+            )
+        )
+        monkeypatch.setattr(content, "_find_plone_sites", lambda app: [site])
+        provider = content.ContentMetricProvider(object())
+        names = [m.name for m in provider.collect()]
+        assert "plone_content_by_state" in names

@@ -1,13 +1,12 @@
+from plone.observability.health.server import HealthServer
+from unittest import mock
+
 import json
 import os
+import pytest
 import socket
 import time
 import urllib.request
-from unittest import mock
-
-import pytest
-
-from plone.observability.health.server import HealthServer
 
 
 def _find_free_port():

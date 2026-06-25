@@ -4,10 +4,11 @@ import pytest
 @pytest.fixture(scope="module")
 def zcml_loaded():
     """Load the package ZCML, which conditionally includes the otel config."""
-    import Products.Five
-    import zope.component
     from zope.configuration import xmlconfig
     from zope.configuration.config import ConfigurationMachine
+
+    import Products.Five
+    import zope.component
 
     context = ConfigurationMachine()
     xmlconfig.registerCommonDirectives(context)
@@ -23,9 +24,9 @@ def zcml_loaded():
 
 def test_otel_zcml_registers_pubevent_subscribers(zcml_loaded):
     """The conditional otel include must wire the publish-start subscriber."""
+    from plone.observability.otel import pubevents
     from zope.component import getGlobalSiteManager
     from ZPublisher.interfaces import IPubStart
-    from plone.observability.otel import pubevents
 
     gsm = getGlobalSiteManager()
     handlers = [

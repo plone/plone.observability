@@ -9,15 +9,12 @@ permissions:
 
 jobs:
   lint:
-    name: Ruff
+    name: pre-commit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
       - uses: astral-sh/setup-uv@v7
 
-      - name: Run ruff check
-        run: uvx ruff check .
-
-      - name: Run ruff format check
-        run: uvx ruff format --check .
+      - name: Run pre-commit
+        run: uvx pre-commit run --all-files --show-diff-on-failure
