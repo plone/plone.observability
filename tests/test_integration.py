@@ -141,9 +141,7 @@ class TestConflictRegistration:
         )
 
         gsm = getGlobalSiteManager()
-        adapter = gsm.adapters.lookup(
-            (IApplication,), IMetricProvider, name="conflict"
-        )
+        adapter = gsm.adapters.lookup((IApplication,), IMetricProvider, name="conflict")
         assert adapter is ConflictMetricProvider
 
     def test_conflict_subscriber_registered(self, zcml_loaded):
