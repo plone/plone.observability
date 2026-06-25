@@ -59,4 +59,11 @@
       name="system"
       />
 
+  <adapter
+      factory=".providers.conflict.ConflictMetricProvider"
+      provides="plone.observability.interfaces.IMetricProvider"
+      for="OFS.interfaces.IApplication"
+      name="conflict"
+      />
+
 </configure>

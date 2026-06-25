@@ -128,3 +128,32 @@ class TestZCARegistrations:
         ok, message = zodb_check()
         assert ok is False
         assert "No database" in message
+
+
+class TestConflictRegistration:
+    def test_conflict_provider_registered(self, zcml_loaded):
+        from OFS.interfaces import IApplication
+        from zope.component import getGlobalSiteManager
+
+        from plone.observability.interfaces import IMetricProvider
+        from plone.observability.metrics.providers.conflict import (
+            ConflictMetricProvider,
+        )
+
+        gsm = getGlobalSiteManager()
+        adapter = gsm.adapters.lookup((IApplication,), IMetricProvider, name="conflict")
+        assert adapter is ConflictMetricProvider
+
+    def test_conflict_subscriber_registered(self, zcml_loaded):
+        from zope.component import getGlobalSiteManager
+        from ZPublisher.interfaces import IPubBeforeAbort
+
+        from plone.observability.metrics.providers import conflict
+
+        gsm = getGlobalSiteManager()
+        handlers = [
+            h.handler
+            for h in gsm.registeredHandlers()
+            if IPubBeforeAbort in getattr(h, "required", ())
+        ]
+        assert conflict.on_pub_before_abort in handlers

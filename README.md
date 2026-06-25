@@ -135,6 +135,7 @@ The default format is Prometheus text. Pass `?format=json` or an `Accept: applic
 | `plone_zodb_cache_size_bytes` | gauge | instance | ZODB object cache size in bytes |
 | `plone_zodb_loads_total` | counter | instance | Cumulative objects loaded from storage (storage-agnostic; via the ZODB activity monitor) |
 | `plone_zodb_stores_total` | counter | instance | Cumulative objects stored to storage (storage-agnostic; via the ZODB activity monitor) |
+| `plone_zodb_conflicts_total` | counter | instance | ZODB conflict errors during publish, by `retry` outcome |
 | `plone_content_total` | gauge | global | Content objects by portal type and site |
 | `plone_content_by_state` | gauge | global | Content objects by workflow state and site |
 
@@ -154,6 +155,18 @@ Metrics carry a `scope` label with value `"global"` or `"instance"`.
 `plone_zodb_loads_total` / `plone_zodb_stores_total` are produced by a minimal ZODB activity monitor that plone.observability installs into the database's activity-monitor slot on the first metrics scrape. It is storage-agnostic (works on FileStorage, RelStorage, zodb-pgjsonb), cumulative, and O(1) in memory. Use `rate(...)` in queries — e.g. `rate(plone_zodb_loads_total[5m])`, or `rate(plone_zodb_loads_total) / rate(plone_requests_total)` as a "loads per request" smell detector.
 
 It is installed **only if no activity monitor is already configured** — a pre-existing monitor is never overridden (a warning is logged and the two counters are then unavailable). Disable installation entirely with `PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR=0`.
+
+### ZODB conflict metrics
+
+`plone_zodb_conflicts_total{retry="true|false"}` counts ZODB `ConflictError`s raised during request publication, captured via an `IPubBeforeAbort` subscriber.
+
+- A **write conflict** means two transactions changed the same object concurrently (write hotspots); a **read conflict** (`ReadConflictError`) means an object a transaction required to stay current was changed under it (`readCurrent` invariants, long transactions). Both are counted.
+- `retry="true"` is a conflict that was retried (usually recovers and is invisible to the user); `retry="false"` is the final attempt that gave up.
+
+```promql
+rate(plone_zodb_conflicts_total[5m])                  # overall contention
+rate(plone_zodb_conflicts_total{retry="false"}[5m])  # conflicts that failed
+```
 
 ### Content metrics and catalog backends
 

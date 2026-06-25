@@ -18,4 +18,9 @@
       handler=".auth.capture_auth"
       />
 
+  <subscriber
+      for="ZPublisher.interfaces.IPubBeforeAbort"
+      handler=".metrics.providers.conflict.on_pub_before_abort"
+      />
+
 </configure>
