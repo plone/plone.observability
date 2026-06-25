@@ -28,6 +28,7 @@ class RequestTracker:
         return {
             "count": 0,
             "duration_sum": 0.0,
+            "max_duration": 0.0,
             "buckets": bucket_counts,
             "errors": defaultdict(int),
         }
@@ -38,6 +39,8 @@ class RequestTracker:
             stats = self._stats[key]
             stats["count"] += 1
             stats["duration_sum"] += duration
+            if duration > stats["max_duration"]:
+                stats["max_duration"] = duration
             for bucket in self.buckets:
                 if duration <= bucket:
                     stats["buckets"][bucket] += 1
@@ -47,6 +50,19 @@ class RequestTracker:
 
     def stats_for(self, auth):
         return self._stats[auth]
+
+    def take_max(self, auth):
+        """Return the max duration observed since the last call and reset it.
+
+        The max is a per-scrape-window gauge: a histogram cannot report the
+        true maximum latency, so we track it directly and reset it on read so
+        each scrape reflects the worst-case request in that window.
+        """
+        with self._lock:
+            stats = self._stats[auth]
+            value = stats["max_duration"]
+            stats["max_duration"] = 0.0
+            return value
 
     @property
     def request_count(self):
@@ -144,6 +160,18 @@ class RequestMetricProvider:
                 type="counter",
                 scope="instance",
                 help="Total number of requests (histogram count)",
+                labels={"auth": auth},
+            )
+
+            yield Metric(
+                name="plone_request_duration_seconds_max",
+                value=round(tracker.take_max(auth), 4),
+                type="gauge",
+                scope="instance",
+                help=(
+                    "Worst-case request duration in seconds since the last "
+                    "scrape (the histogram cannot report the true maximum)"
+                ),
                 labels={"auth": auth},
             )
 

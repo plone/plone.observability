@@ -127,6 +127,7 @@ The default format is Prometheus text. Pass `?format=json` or an `Accept: applic
 | `plone_requests_total` | counter | instance | Total HTTP requests served |
 | `plone_request_duration_seconds_sum` | counter | instance | Cumulative request duration |
 | `plone_request_duration_seconds_bucket` | counter | instance | Request duration histogram buckets |
+| `plone_request_duration_seconds_max` | gauge | instance | Worst-case request duration since the last scrape (the histogram cannot report the true maximum) |
 | `plone_request_errors` | counter | instance | HTTP errors by status code |
 | `plone_zodb_object_count` | gauge | global | Total objects in ZODB |
 | `plone_zodb_db_size_bytes` | gauge | global | ZODB file size |
@@ -142,6 +143,13 @@ The default format is Prometheus text. Pass `?format=json` or an `Accept: applic
 All `plone_request*` metrics additionally carry an `auth="authenticated"|"anonymous"`
 label so traffic can be split by authentication state. (User identity is never a
 metric label — only a span attribute; see the OpenTelemetry section.)
+
+`plone_request_duration_seconds_max` is a per-scrape-window gauge: a histogram can
+only bound latency to its bucket edges, so the true worst-case request time is
+tracked directly and **reset on every scrape**. This gives operators the real max
+backend response time alongside the `histogram_quantile`-derived p90/p99. Because it
+resets on read, scrape it from a single Prometheus target — multiple concurrent
+scrapers would each see only part of the window.
 
 ### Metric scope
 

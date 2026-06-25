@@ -33,6 +33,31 @@ class TestRequestTracker:
         assert tracker.duration_sum > 0
         assert tracker.request_count == 3
 
+    def test_record_tracks_max_duration(self):
+        tracker = RequestTracker()
+        tracker.record(0.1, 200)
+        tracker.record(0.5, 200)
+        tracker.record(0.3, 200)
+        assert tracker.stats_for("anonymous")["max_duration"] == 0.5
+
+    def test_max_duration_is_per_auth(self):
+        tracker = RequestTracker()
+        tracker.record(0.2, 200, authenticated=True)
+        tracker.record(0.9, 200, authenticated=False)
+        assert tracker.stats_for("authenticated")["max_duration"] == 0.2
+        assert tracker.stats_for("anonymous")["max_duration"] == 0.9
+
+    def test_take_max_returns_and_resets(self):
+        tracker = RequestTracker()
+        tracker.record(0.4, 200)
+        tracker.record(0.7, 200)
+        assert tracker.take_max("anonymous") == 0.7
+        # window reset: no requests since -> max is back to zero
+        assert tracker.take_max("anonymous") == 0.0
+        # a new request opens a fresh window
+        tracker.record(0.2, 200)
+        assert tracker.take_max("anonymous") == 0.2
+
     def test_record_separates_by_auth(self):
         tracker = RequestTracker()
         tracker.record(0.1, 200, authenticated=True)
@@ -138,3 +163,36 @@ class TestRequestMetricProvider:
             m for m in metrics if m.name == "plone_request_duration_seconds_bucket"
         ]
         assert len(bucket_metrics) > 0
+
+    def test_collects_max_duration_gauge(self):
+        from plone.observability.metrics.providers.request import tracker
+
+        tracker.record(0.42, 200, authenticated=False)
+        provider = RequestMetricProvider(FakeApp())
+        metrics = list(provider.collect())
+        maxima = {
+            m.labels["auth"]: m
+            for m in metrics
+            if m.name == "plone_request_duration_seconds_max"
+        }
+        assert set(maxima) == {"authenticated", "anonymous"}
+        assert maxima["anonymous"].type == "gauge"
+        assert maxima["anonymous"].value == 0.42
+
+    def test_max_duration_gauge_resets_each_scrape(self):
+        from plone.observability.metrics.providers.request import tracker
+
+        tracker.record(0.42, 200, authenticated=False)
+        provider = RequestMetricProvider(FakeApp())
+
+        def anon_max(metrics):
+            return next(
+                m.value
+                for m in metrics
+                if m.name == "plone_request_duration_seconds_max"
+                and m.labels["auth"] == "anonymous"
+            )
+
+        assert anon_max(list(provider.collect())) == 0.42
+        # second scrape with no new requests -> window is empty again
+        assert anon_max(list(provider.collect())) == 0.0
