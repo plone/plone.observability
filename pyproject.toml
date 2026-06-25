@@ -67,6 +67,14 @@ target = "plone"
 [tool.hatch.build.targets.wheel]
 packages = ["src/plone"]
 
+[tool.coverage.run]
+source = ["plone.observability"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+
 [tool.ruff]
 target-version = "py310"
 
