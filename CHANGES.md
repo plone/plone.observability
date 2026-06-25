@@ -2,6 +2,21 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b6 (2026-06-25)
+
+### New features:
+
+- Add `plone_zodb_conflicts_total{retry="true|false"}` — a storage-agnostic counter of ZODB ConflictErrors during request publication (including the silently-retried ones), captured via an IPubBeforeAbort subscriber. ([#26](https://github.com/plone/plone.observability/issues/26))
+
+### Bug fixes:
+
+- ZODB load/store metrics are now storage-agnostic: `plone_zodb_loads_total`/`plone_zodb_stores_total` counters come from a minimal, O(1) ZODB activity monitor (works on FileStorage, RelStorage, zodb-pgjsonb), replacing the FileStorage-only metrics. Installed by default unless a monitor already exists; disable with `PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR=0`. The content provider now steps aside silently on non-ZCatalog backends (which ship their own provider). ([#25](https://github.com/plone/plone.observability/issues/25))
+
+### Internal:
+
+- Adopt the shared ruff ruleset (single-line imports, B/SIM/UP/C4, py310 target), format ZCML with zpretty, run pre-commit as the single source in CI, and gate test coverage at 90%.
+
+
 ## 1.0.0b5 (2026-06-24)
 
 ### Bug fixes:

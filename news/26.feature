@@ -1,1 +1,0 @@
-Add `plone_zodb_conflicts_total{retry="true|false"}` — a storage-agnostic counter of ZODB ConflictErrors during request publication (including the silently-retried ones), captured via an IPubBeforeAbort subscriber. ([#26](https://github.com/plone/plone.observability/issues/26))
