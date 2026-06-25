@@ -1,7 +1,7 @@
-import os
+from plone.observability.metrics.access import is_allowed
 from unittest import mock
 
-from plone.observability.metrics.access import is_allowed
+import os
 
 
 class TestIsAllowed:

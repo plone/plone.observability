@@ -1,13 +1,12 @@
+from plone.base.utils import boolean_value
+from plone.observability.interfaces import IMetricProvider
+from plone.observability.metric import Metric
+from zope.interface import implementer
+
 import logging
 import os
 import threading
 
-from zope.interface import implementer
-
-from plone.base.utils import boolean_value
-
-from plone.observability.interfaces import IMetricProvider
-from plone.observability.metric import Metric
 
 logger = logging.getLogger(__name__)
 

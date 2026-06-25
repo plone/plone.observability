@@ -1,8 +1,7 @@
-import json
-
+from plone.observability.interfaces import IMetricFormatter
 from zope.interface import implementer
 
-from plone.observability.interfaces import IMetricFormatter
+import json
 
 
 @implementer(IMetricFormatter)

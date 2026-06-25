@@ -1,6 +1,7 @@
-import os
 from ipaddress import ip_address
 from ipaddress import ip_network
+
+import os
 
 
 def _get_cidrs(env_var, default=""):

@@ -1,7 +1,6 @@
 """WSGI middleware + serving-only OTel activation via a PasteDeploy filter."""
 
 from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
-
 from plone.observability.otel import catalog
 from plone.observability.otel import provider
 from plone.observability.otel import zodb

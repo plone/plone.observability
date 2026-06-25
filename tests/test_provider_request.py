@@ -1,11 +1,9 @@
-import threading
-
 from plone.observability.interfaces import IMetricProvider
-from plone.observability.metrics.providers.request import (
-    RequestMetricProvider,
-    RequestTracker,
-)
+from plone.observability.metrics.providers.request import RequestMetricProvider
+from plone.observability.metrics.providers.request import RequestTracker
 from zope.interface.verify import verifyObject
+
+import threading
 
 
 class FakeApp:
@@ -77,8 +75,8 @@ class TestMiddlewareAuth:
     def _run(self, environ):
         from plone.observability.metrics.providers.request import (
             ObservabilityMiddleware,
-            tracker,
         )
+        from plone.observability.metrics.providers.request import tracker
 
         def app(environ, start_response):
             start_response("200 OK", [])
@@ -100,10 +98,8 @@ class TestMiddlewareAuth:
 
 class TestProviderAuthLabel:
     def test_all_request_metrics_carry_auth_label(self):
-        from plone.observability.metrics.providers.request import (
-            RequestMetricProvider,
-            tracker,
-        )
+        from plone.observability.metrics.providers.request import RequestMetricProvider
+        from plone.observability.metrics.providers.request import tracker
 
         tracker.record(0.1, 200, authenticated=True)
         tracker.record(0.2, 500, authenticated=False)

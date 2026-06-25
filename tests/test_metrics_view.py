@@ -1,11 +1,10 @@
-from unittest import mock
-
-from zope.component import getGlobalSiteManager
-from zope.interface import implementer
-
-from plone.observability.interfaces import IMetricFormatter, IMetricProvider
+from plone.observability.interfaces import IMetricFormatter
+from plone.observability.interfaces import IMetricProvider
 from plone.observability.metric import Metric
 from plone.observability.metrics.view import MetricsView
+from unittest import mock
+from zope.component import getGlobalSiteManager
+from zope.interface import implementer
 
 
 @implementer(IMetricFormatter)

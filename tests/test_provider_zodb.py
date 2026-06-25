@@ -101,9 +101,7 @@ class TestZODBMetricProvider:
 
 class TestLoadStoreActivityMonitor:
     def test_accumulates_transfer_counts(self):
-        from plone.observability.metrics.providers.zodb import (
-            LoadStoreActivityMonitor,
-        )
+        from plone.observability.metrics.providers.zodb import LoadStoreActivityMonitor
 
         class FakeConn:
             def __init__(self, counts):

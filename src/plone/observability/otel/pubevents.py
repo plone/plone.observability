@@ -6,19 +6,18 @@ happen in different subscribers. Catalog and commit spans (started elsewhere
 during the request) nest under it because it is made the current context.
 """
 
-import logging
-import os
-
 from opentelemetry import context as otel_context
 from opentelemetry import trace
+from opentelemetry.trace import set_span_in_context
 from opentelemetry.trace import Status
 from opentelemetry.trace import StatusCode
-from opentelemetry.trace import set_span_in_context
 from plone.base.utils import boolean_value
-
 from plone.observability.auth import get_auth_info
-from plone.observability.otel.provider import TRACER_NAME
 from plone.observability.otel.provider import is_enabled
+from plone.observability.otel.provider import TRACER_NAME
+
+import logging
+import os
 
 
 logger = logging.getLogger(__name__)

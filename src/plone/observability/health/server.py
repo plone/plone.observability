@@ -1,15 +1,15 @@
+from http.server import BaseHTTPRequestHandler
+from http.server import HTTPServer
+from plone.observability.interfaces import ILivenessCheck
+from plone.observability.interfaces import IReadinessCheck
+from socketserver import ThreadingMixIn
+from zope.component import getUtilitiesFor
+
 import json
 import logging
 import os
 import threading
-from http.server import BaseHTTPRequestHandler
-from http.server import HTTPServer
-from socketserver import ThreadingMixIn
 
-from zope.component import getUtilitiesFor
-
-from plone.observability.interfaces import ILivenessCheck
-from plone.observability.interfaces import IReadinessCheck
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class HealthRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, format, *args):
+    def log_message(self, format, *args):  # noqa: A002 (stdlib override signature)
         # Suppress default stderr logging
         logger.debug(format, *args)
 

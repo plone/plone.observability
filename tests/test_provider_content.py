@@ -1,7 +1,6 @@
-from unittest import mock
-
 from plone.observability.interfaces import IMetricProvider
 from plone.observability.metrics.providers.content import ContentMetricProvider
+from unittest import mock
 from zope.interface.verify import verifyObject
 
 
@@ -122,11 +121,8 @@ class TestContentMetricProvider:
 
 class TestContentProviderStepsAside:
     def test_non_zcatalog_yields_nothing_without_raising(self):
+        from plone.observability.metrics.providers.content import ContentMetricProvider
         from unittest import mock
-
-        from plone.observability.metrics.providers.content import (
-            ContentMetricProvider,
-        )
 
         class WeirdCatalog:
             @property

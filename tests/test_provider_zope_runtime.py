@@ -1,7 +1,5 @@
 from plone.observability.interfaces import IMetricProvider
-from plone.observability.metrics.providers.zope_runtime import (
-    ZopeRuntimeMetricProvider,
-)
+from plone.observability.metrics.providers.zope_runtime import ZopeRuntimeMetricProvider
 from zope.interface.verify import verifyObject
 
 

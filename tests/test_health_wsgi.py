@@ -1,15 +1,14 @@
 import importlib
-
 import pytest
 
 
 def test_make_filter_wires_db_starts_and_passes_through(monkeypatch):
-    import Zope2
+    from plone.observability.health import wsgi
+    from plone.observability.interfaces import IReadinessCheck
     from zope.component import getGlobalSiteManager
     from zope.interface import implementer
 
-    from plone.observability.health import wsgi
-    from plone.observability.interfaces import IReadinessCheck
+    import Zope2
 
     fake_db = object()
     monkeypatch.setattr(Zope2, "DB", fake_db, raising=False)

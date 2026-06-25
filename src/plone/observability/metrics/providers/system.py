@@ -1,9 +1,8 @@
-import resource
-
-from zope.interface import implementer
-
 from plone.observability.interfaces import IMetricProvider
 from plone.observability.metric import Metric
+from zope.interface import implementer
+
+import resource
 
 
 @implementer(IMetricProvider)
