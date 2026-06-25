@@ -1,11 +1,76 @@
 import logging
+import os
+import threading
 
 from zope.interface import implementer
+
+from plone.base.utils import boolean_value
 
 from plone.observability.interfaces import IMetricProvider
 from plone.observability.metric import Metric
 
 logger = logging.getLogger(__name__)
+
+
+class LoadStoreActivityMonitor:
+    """Minimal ZODB activity monitor: cumulative load/store totals.
+
+    Installed in the DB's single activity-monitor slot. ZODB calls
+    closedConnection() on every connection close (~once per request); we read
+    and reset the connection's transfer counts and add them to process-wide
+    totals. O(1) memory, no history log.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.loads = 0
+        self.stores = 0
+
+    def closedConnection(self, conn):
+        loads, stores = conn.getTransferCounts(True)  # read and reset
+        with self._lock:
+            self.loads += loads
+            self.stores += stores
+
+    def getActivityAnalysis(self, start=0, end=0, divisions=10):
+        # Part of ZODB's activity-monitor API surface; unused here.
+        return []
+
+
+_monitor = None  # our LoadStoreActivityMonitor, once installed
+_monitor_lock = threading.Lock()
+_warned_foreign = False
+
+
+def _monitor_enabled():
+    return boolean_value(
+        os.environ.get("PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR", ""),
+        default=True,
+    )
+
+
+def _ensure_activity_monitor(db):
+    """Install our load/store monitor once, if the slot is free and enabled."""
+    global _monitor, _warned_foreign
+    if _monitor is not None or not _monitor_enabled():
+        return
+    with _monitor_lock:
+        if _monitor is not None:
+            return
+        existing = db.getActivityMonitor()
+        if existing is not None:
+            if not _warned_foreign:
+                logger.warning(
+                    "ZODB activity monitor already set (%r); not installing "
+                    "plone.observability load/store monitor, so "
+                    "plone_zodb_loads_total/stores_total are unavailable",
+                    existing,
+                )
+                _warned_foreign = True
+            return
+        monitor = LoadStoreActivityMonitor()
+        db.setActivityMonitor(monitor)
+        _monitor = monitor
 
 
 @implementer(IMetricProvider)
@@ -81,22 +146,22 @@ class ZODBMetricProvider:
             labels=labels,
         )
 
-        # Storage-level metrics (if available)
-        storage = db.storage
-        if hasattr(storage, "getTransactionCount"):
+        # Load/store activity (storage-agnostic, via our activity monitor)
+        _ensure_activity_monitor(db)
+        if _monitor is not None:
             yield Metric(
-                name="plone_zodb_loads",
-                value=getattr(storage, "_loads", 0),
+                name="plone_zodb_loads_total",
+                value=_monitor.loads,
                 type="counter",
                 scope="instance",
-                help="Total number of object loads from storage",
+                help="Cumulative objects loaded from storage since monitor install",
                 labels=labels,
             )
             yield Metric(
-                name="plone_zodb_stores",
-                value=getattr(storage, "_stores", 0),
+                name="plone_zodb_stores_total",
+                value=_monitor.stores,
                 type="counter",
                 scope="instance",
-                help="Total number of object stores to storage",
+                help="Cumulative objects stored to storage since monitor install",
                 labels=labels,
             )

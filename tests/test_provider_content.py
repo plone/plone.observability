@@ -118,3 +118,32 @@ class TestContentMetricProvider:
         ):
             metrics = list(provider.collect())
         assert metrics == []
+
+
+class TestContentProviderStepsAside:
+    def test_non_zcatalog_yields_nothing_without_raising(self):
+        from unittest import mock
+
+        from plone.observability.metrics.providers.content import (
+            ContentMetricProvider,
+        )
+
+        class WeirdCatalog:
+            @property
+            def Indexes(self):
+                raise RuntimeError("no such API on this backend")
+
+        class Site:
+            id = "Plone"
+
+            def unrestrictedTraverse(self, path, default=None):
+                return WeirdCatalog() if path == "portal_catalog" else default
+
+        site = Site()
+        with mock.patch(
+            "plone.observability.metrics.providers.content._find_plone_sites",
+            return_value=[site],
+        ):
+            provider = ContentMetricProvider(object())
+            metrics = list(provider.collect())
+        assert metrics == []

@@ -71,8 +71,13 @@ class ContentMetricProvider:
                         help="Number of content objects by portal type",
                         labels={"portal_type": portal_type, "site": site_label},
                     )
-            except (KeyError, AttributeError):
-                logger.debug("portal_type index not available in %s", site_label)
+            except Exception:
+                logger.debug(
+                    "portal_type index not available in %s (catalog is not "
+                    "ZCatalog-based); a backend-specific provider should supply "
+                    "content metrics",
+                    site_label,
+                )
 
             # Content counts by workflow state
             try:
@@ -86,5 +91,9 @@ class ContentMetricProvider:
                         help="Number of content objects by workflow state",
                         labels={"state": state, "site": site_label},
                     )
-            except (KeyError, AttributeError):
-                logger.debug("review_state index not available in %s", site_label)
+            except Exception:
+                logger.debug(
+                    "review_state index not available in %s (catalog is not "
+                    "ZCatalog-based)",
+                    site_label,
+                )

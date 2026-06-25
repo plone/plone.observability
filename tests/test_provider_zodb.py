@@ -15,6 +15,13 @@ class FakeDB:
     database_name = "main"
     pool = FakePool()
     storage = FakeStorage()
+    _activity_monitor = None
+
+    def getActivityMonitor(self):
+        return self._activity_monitor
+
+    def setActivityMonitor(self, monitor):
+        self._activity_monitor = monitor
 
     def objectCount(self):
         return 5000
@@ -38,7 +45,8 @@ class FakeJar:
 
 
 class FakeApp:
-    _p_jar = FakeJar()
+    def __init__(self):
+        self._p_jar = FakeJar()
 
 
 class TestZODBMetricProvider:
@@ -89,3 +97,105 @@ class TestZODBMetricProvider:
         provider = ZODBMetricProvider(NoJarApp())
         metrics = list(provider.collect())
         assert metrics == []
+
+
+class TestLoadStoreActivityMonitor:
+    def test_accumulates_transfer_counts(self):
+        from plone.observability.metrics.providers.zodb import (
+            LoadStoreActivityMonitor,
+        )
+
+        class FakeConn:
+            def __init__(self, counts):
+                self._counts = list(counts)
+
+            def getTransferCounts(self, clear=False):
+                return self._counts.pop(0)
+
+        mon = LoadStoreActivityMonitor()
+        conn = FakeConn([(3, 1), (2, 0)])
+        mon.closedConnection(conn)
+        mon.closedConnection(conn)
+        assert mon.loads == 5
+        assert mon.stores == 1
+
+
+class FakeMonitorDB:
+    def __init__(self, existing=None):
+        self._monitor = existing
+
+    def getActivityMonitor(self):
+        return self._monitor
+
+    def setActivityMonitor(self, monitor):
+        self._monitor = monitor
+
+
+class TestEnsureActivityMonitor:
+    def _reset(self, monkeypatch):
+        from plone.observability.metrics.providers import zodb
+
+        monkeypatch.setattr(zodb, "_monitor", None)
+        monkeypatch.setattr(zodb, "_warned_foreign", False)
+        return zodb
+
+    def test_installs_when_slot_empty_and_enabled(self, monkeypatch):
+        zodb = self._reset(monkeypatch)
+        monkeypatch.delenv("PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR", raising=False)
+        db = FakeMonitorDB(existing=None)
+        zodb._ensure_activity_monitor(db)
+        assert isinstance(db.getActivityMonitor(), zodb.LoadStoreActivityMonitor)
+        assert zodb._monitor is db.getActivityMonitor()
+
+    def test_disabled_via_env(self, monkeypatch):
+        zodb = self._reset(monkeypatch)
+        monkeypatch.setenv("PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR", "0")
+        db = FakeMonitorDB(existing=None)
+        zodb._ensure_activity_monitor(db)
+        assert db.getActivityMonitor() is None
+        assert zodb._monitor is None
+
+    def test_does_not_override_foreign_monitor(self, monkeypatch):
+        zodb = self._reset(monkeypatch)
+        monkeypatch.delenv("PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR", raising=False)
+        foreign = object()
+        db = FakeMonitorDB(existing=foreign)
+        zodb._ensure_activity_monitor(db)
+        assert db.getActivityMonitor() is foreign
+        assert zodb._monitor is None
+
+
+class TestZODBLoadStoreMetrics:
+    def test_emits_loads_stores_counters(self, monkeypatch):
+        from plone.observability.metrics.providers import zodb
+
+        monkeypatch.setattr(zodb, "_monitor", None)
+        monkeypatch.setattr(zodb, "_warned_foreign", False)
+        monkeypatch.delenv("PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR", raising=False)
+
+        provider = zodb.ZODBMetricProvider(FakeApp())
+        list(provider.collect())  # triggers lazy install on FakeDB
+
+        zodb._monitor.loads = 42
+        zodb._monitor.stores = 7
+
+        metrics = {m.name: m for m in provider.collect()}
+        assert metrics["plone_zodb_loads_total"].value == 42
+        assert metrics["plone_zodb_loads_total"].type == "counter"
+        assert metrics["plone_zodb_loads_total"].scope == "instance"
+        assert metrics["plone_zodb_stores_total"].value == 7
+        assert "database" in metrics["plone_zodb_loads_total"].labels
+
+    def test_no_loads_counters_when_foreign_monitor(self, monkeypatch):
+        from plone.observability.metrics.providers import zodb
+
+        monkeypatch.setattr(zodb, "_monitor", None)
+        monkeypatch.setattr(zodb, "_warned_foreign", False)
+
+        app = FakeApp()
+        app._p_jar.db()._activity_monitor = object()  # foreign monitor present
+
+        provider = zodb.ZODBMetricProvider(app)
+        metrics = {m.name: m for m in provider.collect()}
+        assert "plone_zodb_loads_total" not in metrics
+        assert "plone_zodb_stores_total" not in metrics
