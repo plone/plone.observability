@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b10 (2026-06-30)
+
+### New features:
+
+- Trace the `plone.transformchain` response-transform phase. When `plone.transformchain` is installed, the package now emits a `transformchain` span with one `transform.<name>` child span per transform (carrying `plone.transform.name`/`plone.transform.handler`, and `plone.transformchain.transform_count` on the parent), nested under the `ZPublisher.publish` span. This surfaces which transform (e.g. the Diazo/theming transform) dominates the post-render time. It is driven by transformchain's own before/after events — no monkeypatching — and is gated by the same OTel activation switch as the other spans.
+
+
 ## 1.0.0b9 (2026-06-29)
 
 ### Bug fixes:
