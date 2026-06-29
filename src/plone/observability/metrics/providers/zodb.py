@@ -6,9 +6,50 @@ from zope.interface import implementer
 import logging
 import os
 import threading
+import time
 
 
 logger = logging.getLogger(__name__)
+
+
+# The two DB-wide gauges (object count, database size) are cheap on
+# FileStorage but cost a full ``SELECT count(*)`` / relation-size query on
+# Postgres-backed storage (zodb-pgjsonb) or RelStorage — seconds on a large
+# DB, run on *every* scrape. They change slowly, so cache them with a TTL
+# (shared env var with the content provider) keyed by database name. The
+# cheap in-memory gauges and the load/store counters stay live per scrape.
+_global_gauge_cache = {}  # database_name -> (timestamp, (object_count, db_size))
+_global_gauge_lock = threading.Lock()
+
+
+def _cache_ttl():
+    return int(os.environ.get("PLONE_OBSERVABILITY_METRICS_CACHE_TTL", "60"))
+
+
+def _expensive_global_gauges(db, db_name):
+    """Return ``(object_count, db_size)`` for *db*, cached per database.
+
+    The expensive queries run at most once per TTL window. We compute outside
+    the lock so a slow query never serializes concurrent scrapes behind it.
+    """
+    now = time.time()
+    with _global_gauge_lock:
+        entry = _global_gauge_cache.get(db_name)
+        if entry is not None and (now - entry[0]) < _cache_ttl():
+            return entry[1]
+
+    object_count = db.objectCount()
+    db_size = db.getSize()
+    if isinstance(db_size, str):
+        try:
+            db_size = float(db_size)
+        except (ValueError, TypeError):
+            db_size = 0
+
+    value = (object_count, db_size)
+    with _global_gauge_lock:
+        _global_gauge_cache[db_name] = (now, value)
+    return value
 
 
 class LoadStoreActivityMonitor:
@@ -92,22 +133,18 @@ class ZODBMetricProvider:
         db_name = getattr(db, "database_name", "main")
         labels = {"database": db_name}
 
-        # Global metrics
+        # Global metrics — these two are DB-wide queries that are expensive on
+        # Postgres-backed storage, so they are TTL-cached (see module docstring).
+        object_count, db_size = _expensive_global_gauges(db, db_name)
         yield Metric(
             name="plone_zodb_object_count",
-            value=db.objectCount(),
+            value=object_count,
             type="gauge",
             scope="global",
             help="Total number of objects in the ZODB",
             labels=labels,
         )
 
-        db_size = db.getSize()
-        if isinstance(db_size, str):
-            try:
-                db_size = float(db_size)
-            except (ValueError, TypeError):
-                db_size = 0
         yield Metric(
             name="plone_zodb_db_size_bytes",
             value=db_size,

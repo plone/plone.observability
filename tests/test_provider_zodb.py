@@ -2,6 +2,19 @@ from plone.observability.interfaces import IMetricProvider
 from plone.observability.metrics.providers.zodb import ZODBMetricProvider
 from zope.interface.verify import verifyObject
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _clear_global_gauge_cache():
+    """The expensive ZODB global gauges are cached at module level; clear it
+    before each test so caching tests are isolated and ordering-independent."""
+    from plone.observability.metrics.providers import zodb
+
+    zodb._global_gauge_cache.clear()
+    yield
+    zodb._global_gauge_cache.clear()
+
 
 class FakePool:
     size = 7
@@ -197,3 +210,72 @@ class TestZODBLoadStoreMetrics:
         metrics = {m.name: m for m in provider.collect()}
         assert "plone_zodb_loads_total" not in metrics
         assert "plone_zodb_stores_total" not in metrics
+
+
+class CountingDB(FakeDB):
+    """FakeDB that records how often the expensive DB-wide calls run."""
+
+    def __init__(self):
+        self.object_count_calls = 0
+        self.get_size_calls = 0
+
+    def objectCount(self):
+        self.object_count_calls += 1
+        return 5000
+
+    def getSize(self):
+        self.get_size_calls += 1
+        return 1048576
+
+
+class CountingApp:
+    def __init__(self):
+        self._db = CountingDB()
+
+        class Jar:
+            def db(jar_self):
+                return self._db
+
+        self._p_jar = Jar()
+
+
+class TestExpensiveGaugeCaching:
+    def test_object_count_and_db_size_cached_across_scrapes(self, monkeypatch):
+        monkeypatch.setenv("PLONE_OBSERVABILITY_METRICS_CACHE_TTL", "60")
+        app = CountingApp()
+
+        # Two scrapes = two fresh provider instances (factory-registered adapter)
+        list(ZODBMetricProvider(app).collect())
+        list(ZODBMetricProvider(app).collect())
+
+        assert app._db.object_count_calls == 1
+        assert app._db.get_size_calls == 1
+
+    def test_cached_value_is_still_emitted_on_the_second_scrape(self, monkeypatch):
+        monkeypatch.setenv("PLONE_OBSERVABILITY_METRICS_CACHE_TTL", "60")
+        app = CountingApp()
+
+        list(ZODBMetricProvider(app).collect())
+        metrics = {m.name: m for m in ZODBMetricProvider(app).collect()}
+        assert metrics["plone_zodb_object_count"].value == 5000
+        assert metrics["plone_zodb_db_size_bytes"].value == 1048576
+
+    def test_recomputed_after_ttl_expires(self, monkeypatch):
+        monkeypatch.setenv("PLONE_OBSERVABILITY_METRICS_CACHE_TTL", "0")
+        app = CountingApp()
+
+        list(ZODBMetricProvider(app).collect())
+        list(ZODBMetricProvider(app).collect())
+
+        assert app._db.object_count_calls == 2
+        assert app._db.get_size_calls == 2
+
+    def test_cheap_gauges_not_cached(self, monkeypatch):
+        """Connection/cache gauges must reflect live values every scrape."""
+        monkeypatch.setenv("PLONE_OBSERVABILITY_METRICS_CACHE_TTL", "60")
+        app = FakeApp()
+
+        list(ZODBMetricProvider(app).collect())
+        app._p_jar.db().cacheSize = lambda: 999
+        metrics = {m.name: m for m in ZODBMetricProvider(app).collect()}
+        assert metrics["plone_zodb_cache_size"].value == 999

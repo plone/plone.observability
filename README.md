@@ -37,7 +37,7 @@ All configuration is done via environment variables.
 | `PLONE_OBSERVABILITY_HEALTH_PORT` | `8081` | Port for the health probe server. Set to `0` to disable. |
 | `PLONE_OBSERVABILITY_METRICS_ALLOWLIST` | *(empty, open)* | Comma-separated CIDRs allowed to access `@@metrics`. Empty means all IPs are allowed. |
 | `PLONE_OBSERVABILITY_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated CIDRs of trusted reverse proxies for `X-Forwarded-For` resolution. |
-| `PLONE_OBSERVABILITY_METRICS_CACHE_TTL` | `60` | Seconds to cache content catalog metrics (expensive to collect). |
+| `PLONE_OBSERVABILITY_METRICS_CACHE_TTL` | `60` | Seconds to cache the expensive-to-collect metrics: the content catalog counts and the DB-wide ZODB gauges (`plone_zodb_object_count`, `plone_zodb_db_size_bytes`). On Postgres-backed storage those two are full-table queries; caching keeps `@@metrics` fast. |
 | `PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR` | `1` | Install a minimal ZODB activity monitor for load/store counters. Set `0` to disable. |
 
 ## Health Probes
