@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b9 (2026-06-29)
+
+### Bug fixes:
+
+- `@@metrics` is no longer slow on Postgres-backed storage (zodb-pgjsonb / RelStorage). The two DB-wide ZODB gauges — `plone_zodb_object_count` and `plone_zodb_db_size_bytes` — were recomputed uncached on every scrape; on FileStorage that is cheap, but on Postgres-backed storage `objectCount()`/`getSize()` become full-table/relation-size queries that took ~seconds each scrape. They are now cached at module level with a TTL (the existing `PLONE_OBSERVABILITY_METRICS_CACHE_TTL`, default 60s), keyed by database name. The cheap in-memory gauges and the load/store counters stay live per scrape. ([#35](https://github.com/plone/plone.observability/issues/35))
+
+
 ## 1.0.0b8 (2026-06-29)
 
 ### Bug fixes:

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "plone.observability"
-version = "1.0.0b8"
+version = "1.0.0b9"
 description = "Kubernetes-style health probes and metrics for Plone"
 readme = "README.md"
 license = "GPL-2.0-only"
