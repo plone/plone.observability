@@ -8,6 +8,7 @@ from zope.component import getUtilitiesFor
 import json
 import logging
 import os
+import sys
 import threading
 
 
@@ -18,6 +19,16 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     """HTTPServer that handles each request in a new thread."""
 
     daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        exc = sys.exc_info()[1]
+        if isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+            # Probe client disconnected before we finished writing the
+            # response (common during warmup when readiness returns 503).
+            # Harmless, so do not dump a traceback.
+            logger.debug("Health probe connection dropped from %s", client_address)
+            return
+        super().handle_error(request, client_address)
 
 
 class HealthRequestHandler(BaseHTTPRequestHandler):
@@ -69,11 +80,16 @@ class HealthRequestHandler(BaseHTTPRequestHandler):
 
     def _send_json(self, status, data):
         body = json.dumps(data).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            # Probe client disconnected before we finished writing (common
+            # during warmup when readiness returns 503). Harmless.
+            logger.debug("Health probe client disconnected early")
 
     def log_message(self, format, *args):  # noqa: A002 (stdlib override signature)
         # Suppress default stderr logging

@@ -78,6 +78,44 @@ class TestHealthServer:
             server.stop()
 
 
+def test_send_json_swallows_client_disconnect():
+    from plone.observability.health.server import HealthRequestHandler
+
+    handler = HealthRequestHandler.__new__(HealthRequestHandler)
+    handler.send_response = mock.Mock()
+    handler.send_header = mock.Mock()
+    handler.end_headers = mock.Mock()
+    handler.wfile = mock.Mock()
+    handler.wfile.write.side_effect = BrokenPipeError(32, "Broken pipe")
+
+    # Must not raise: client disconnected mid-write.
+    handler._send_json(503, {"status": "failed"})
+
+
+def test_handle_error_suppresses_connection_errors():
+    from plone.observability.health.server import ThreadingHTTPServer
+
+    server = ThreadingHTTPServer.__new__(ThreadingHTTPServer)
+    with mock.patch("socketserver.BaseServer.handle_error") as base_handle_error:
+        try:
+            raise ConnectionResetError(104, "Connection reset by peer")
+        except ConnectionResetError:
+            server.handle_error("request", ("127.0.0.1", 12345))
+    base_handle_error.assert_not_called()
+
+
+def test_handle_error_delegates_other_errors():
+    from plone.observability.health.server import ThreadingHTTPServer
+
+    server = ThreadingHTTPServer.__new__(ThreadingHTTPServer)
+    with mock.patch("socketserver.BaseServer.handle_error") as base_handle_error:
+        try:
+            raise ValueError("something else")
+        except ValueError:
+            server.handle_error("request", ("127.0.0.1", 12345))
+    base_handle_error.assert_called_once()
+
+
 def test_start_is_non_fatal_on_bind_error(monkeypatch):
     from plone.observability.health import server as server_mod
     from plone.observability.health.server import HealthServer
