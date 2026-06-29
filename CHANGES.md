@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b8 (2026-06-29)
+
+### Bug fixes:
+
+- Health server no longer dumps `BrokenPipeError`/`ConnectionResetError` tracebacks when a probe client disconnects before the response is fully written (common during warmup when readiness returns 503). These connection drops are now logged at debug level instead.
+
+
 ## 1.0.0b7 (2026-06-25)
 
 ### New features:
