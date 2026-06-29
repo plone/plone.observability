@@ -1,5 +1,6 @@
 <configure
     xmlns="http://namespaces.zope.org/zope"
+    xmlns:zcml="http://namespaces.zope.org/zcml"
     i18n_domain="plone.observability"
     >
 
@@ -22,5 +23,44 @@
       for="ZPublisher.interfaces.IPubFailure"
       handler=".pubevents.on_pub_failure"
       />
+
+  <!-- plone.transformchain spans: a `transformchain` parent span with one
+       `transform.<name>` child per transform, driven by transformchain's own
+       before/after events. Only wired when plone.transformchain is installed. -->
+  <configure zcml:condition="installed plone.transformchain">
+
+    <subscriber
+        for="plone.transformchain.interfaces.IBeforeTransformsEvent"
+        handler=".transformchain.on_before_transforms"
+        />
+
+    <subscriber
+        for="plone.transformchain.interfaces.IBeforeSingleTransformEvent"
+        handler=".transformchain.on_before_single_transform"
+        />
+
+    <subscriber
+        for="plone.transformchain.interfaces.IAfterSingleTransformEvent"
+        handler=".transformchain.on_after_single_transform"
+        />
+
+    <subscriber
+        for="plone.transformchain.interfaces.IAfterTransformsEvent"
+        handler=".transformchain.on_after_transforms"
+        />
+
+    <!-- Flush spans left open when a transform raises (the Transformer
+         swallows the error and skips AfterTransforms). -->
+    <subscriber
+        for="ZPublisher.interfaces.IPubSuccess"
+        handler=".transformchain.on_pub_success"
+        />
+
+    <subscriber
+        for="ZPublisher.interfaces.IPubFailure"
+        handler=".transformchain.on_pub_failure"
+        />
+
+  </configure>
 
 </configure>
