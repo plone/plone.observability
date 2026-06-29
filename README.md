@@ -317,6 +317,11 @@ Emitted spans (depth: request + key Plone internals):
 - `catalog.searchResults` / `catalog.unrestrictedSearchResults` — per catalog
   query (standard Plone **and** plone-pgcatalog), with `plone.catalog.result_count`
 - `transaction.commit` — per ZODB transaction completion
+- `transformchain` — the `plone.transformchain` response-transform phase, with a
+  `transform.<name>` child span per transform (carrying `plone.transform.name`)
+  and `plone.transformchain.transform_count` on the parent. Only emitted when
+  `plone.transformchain` is installed; lets you see which transform (e.g. the
+  Diazo/theming transform) dominates the post-render time.
 
 The `ZPublisher.publish` span also carries `enduser.authenticated` (always) and,
 when `PLONE_OBSERVABILITY_OTEL_USER_ID` is enabled, `enduser.id`.
