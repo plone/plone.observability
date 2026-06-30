@@ -121,3 +121,75 @@ def test_publish_span_carries_request_total(span_exporter, monkeypatch):
     )
     assert span.attributes["plone.zodb.objects_loaded"] == 42
     assert span.attributes["plone.zodb.objects_stored"] == 3
+
+
+def test_subrequest_error_path_sets_no_counts(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    from plone.observability.otel import subrequest as sr
+
+    conn = _Conn()
+    req = _Req(conn)
+    req.environ = {}
+    monkeypatch.setattr(sr, "getRequest", lambda: req)
+
+    def fake(url, **kw):
+        conn.loads += 4  # increment so a wrong impl would wrongly annotate
+        raise ValueError("tile error")
+
+    import pytest
+
+    with pytest.raises(ValueError, match="tile error"):
+        sr._traced_subrequest(fake, None, ("/p/@@tile",), {})
+
+    span = next(
+        s for s in span_exporter.get_finished_spans() if s.name == "subrequest @@tile"
+    )
+    assert span.status.status_code.name == "ERROR"
+    assert "plone.zodb.objects_loaded" not in span.attributes
+    assert "plone.zodb.objects_stored" not in span.attributes
+
+
+def test_publish_total_covers_subrequest_delta(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    from plone.observability.otel import pubevents
+    from plone.observability.otel import subrequest as sr
+    from ZPublisher.pubevents import PubStart
+    from ZPublisher.pubevents import PubSuccess
+
+    conn = _Conn()
+
+    class _PubReq:
+        def __init__(self):
+            self.environ = {}
+            self.PARENTS = [_App(conn)]
+            self._data = {"PATH_INFO": "/page"}
+
+        def get(self, key, default=None):
+            return self._data.get(key, default)
+
+    pubreq = _PubReq()
+    pubevents.on_pub_start(PubStart(pubreq))
+
+    # subrequest uses the same shared conn via _Req
+    subreq = _Req(conn)
+    subreq.environ = {}
+    monkeypatch.setattr(sr, "getRequest", lambda: subreq)
+
+    def fake(url, **kw):
+        conn.loads += 5  # tile loads 5 objects
+
+    sr._traced_subrequest(fake, None, ("/p/@@tile",), {})
+
+    conn.loads += 3  # additional non-subrequest work
+
+    pubevents.on_pub_success(PubSuccess(pubreq))
+
+    tile_span = next(
+        s for s in span_exporter.get_finished_spans() if s.name == "subrequest @@tile"
+    )
+    assert tile_span.attributes["plone.zodb.objects_loaded"] == 5
+
+    publish_span = next(
+        s for s in span_exporter.get_finished_spans() if s.name == "ZPublisher.publish"
+    )
+    assert publish_span.attributes["plone.zodb.objects_loaded"] == 8  # 5 + 3
