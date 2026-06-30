@@ -44,35 +44,42 @@ class HealthRequestHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
-    def _handle_live(self):
+    def _run_checks(self, interface):
         checks = {}
         ok = True
-        for name, check in getUtilitiesFor(ILivenessCheck):
+        for name, check in getUtilitiesFor(interface):
             check_ok, message = check()
             checks[name] = {"ok": check_ok, "message": message}
             if not check_ok:
                 ok = False
+        return ok, checks
+
+    def _handle_live(self):
+        ok, checks = self._run_checks(ILivenessCheck)
         self._send_json(
             200 if ok else 503, {"status": "ok" if ok else "failed", "checks": checks}
         )
 
     def _handle_ready(self):
-        server = self.server
-        checks = {}
-        ok = True
-        for name, check in getUtilitiesFor(IReadinessCheck):
-            check_ok, message = check()
-            checks[name] = {"ok": check_ok, "message": message}
-            if not check_ok:
-                ok = False
+        ok, checks = self._run_checks(IReadinessCheck)
         if ok:
-            server.health_server._started = True
+            self.server.health_server._started = True
         self._send_json(
             200 if ok else 503, {"status": "ok" if ok else "failed", "checks": checks}
         )
 
     def _handle_startup(self):
-        started = self.server.health_server._started
+        # Determine readiness ourselves and latch on first success. Kubernetes
+        # does not run the readiness probe until the startup probe has already
+        # succeeded, so /startup cannot wait for /ready to have been polled --
+        # it must evaluate the readiness checks itself. Once started it stays
+        # green (startup semantics: "did the process finish booting").
+        hs = self.server.health_server
+        if not hs._started:
+            ok, _ = self._run_checks(IReadinessCheck)
+            if ok:
+                hs._started = True
+        started = hs._started
         self._send_json(
             200 if started else 503,
             {"status": "ok" if started else "starting"},

@@ -1,12 +1,34 @@
 from plone.observability.health.server import HealthServer
 from unittest import mock
 
+import contextlib
 import json
 import os
 import pytest
 import socket
 import time
 import urllib.request
+
+
+@contextlib.contextmanager
+def _registered_readiness(ok, message="x", name="test-readiness"):
+    """Register a temporary IReadinessCheck utility in the global registry."""
+    from plone.observability.interfaces import IReadinessCheck
+    from zope.component import getGlobalSiteManager
+    from zope.interface import implementer
+
+    @implementer(IReadinessCheck)
+    class _Check:
+        def __call__(self):
+            return ok, message
+
+    gsm = getGlobalSiteManager()
+    check = _Check()
+    gsm.registerUtility(check, IReadinessCheck, name=name)
+    try:
+        yield
+    finally:
+        gsm.unregisterUtility(check, IReadinessCheck, name=name)
 
 
 def _find_free_port():
@@ -52,6 +74,33 @@ class TestHealthServer:
         urllib.request.urlopen(f"http://127.0.0.1:{port}/ready")
         resp = urllib.request.urlopen(f"http://127.0.0.1:{port}/startup")
         assert resp.status == 200
+
+    def test_startup_returns_200_without_prior_ready(self, health_server):
+        # /startup must turn green on its own: Kubernetes gates the readiness
+        # probe behind a successful startup probe, so /ready is never polled
+        # first. With no failing readiness checks, /startup is ready immediately.
+        server, port = health_server
+        resp = urllib.request.urlopen(f"http://127.0.0.1:{port}/startup")
+        assert resp.status == 200
+        assert json.loads(resp.read())["status"] == "ok"
+
+    def test_startup_evaluates_readiness_then_latches(self, health_server):
+        server, port = health_server
+
+        # readiness failing -> startup not ready yet
+        with _registered_readiness(False):
+            with pytest.raises(urllib.error.HTTPError) as exc:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/startup")
+            assert exc.value.code == 503
+
+        # readiness now passes -> startup goes green WITHOUT /ready being polled
+        resp = urllib.request.urlopen(f"http://127.0.0.1:{port}/startup")
+        assert resp.status == 200
+
+        # latched: once started it stays green even if readiness later flaps
+        with _registered_readiness(False):
+            resp = urllib.request.urlopen(f"http://127.0.0.1:{port}/startup")
+            assert resp.status == 200
 
     def test_unknown_path_returns_404(self, health_server):
         server, port = health_server

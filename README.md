@@ -54,6 +54,11 @@ The health server is started by the `egg:plone.observability#healthserver` WSGI 
 | `/ready` | Readiness check — can the process serve requests? |
 | `/startup` | Startup check — has the process finished initializing? |
 
+`/startup` evaluates the readiness checks itself and **latches** on the first
+success (once started it stays green). This is deliberate: Kubernetes does not
+run the readiness probe until the startup probe has succeeded, so `/startup`
+cannot depend on `/ready` having been polled first — it must stand on its own.
+
 All endpoints return JSON with a 200 on success or 503 on failure:
 
 ```json
