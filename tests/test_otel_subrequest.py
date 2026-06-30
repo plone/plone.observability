@@ -96,3 +96,36 @@ def test_exception_records_and_reraises(span_exporter, monkeypatch):
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert spans[0].status.status_code.name == "ERROR"
+
+
+def test_register_is_idempotent():
+    from plone.observability.otel import subrequest as sr
+
+    sr.register()
+    sr.register()  # must not raise
+
+
+def test_wraps_a_caller_module(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    from plone.observability.otel import subrequest as sr
+
+    import types
+    import wrapt
+
+    mod = types.ModuleType("fake_caller")
+
+    def original(url, **kw):
+        return _Resp(200)
+
+    mod.subrequest = original
+    wrapt.wrap_function_wrapper(mod, "subrequest", sr._traced_subrequest)
+
+    resp = mod.subrequest("/x/@@tile")
+    assert resp.status == 200
+    assert [s.name for s in span_exporter.get_finished_spans()] == ["subrequest @@tile"]
+
+
+def test_target_modules():
+    from plone.observability.otel import subrequest as sr
+
+    assert sr._TARGET_MODULES == ("plone.app.blocks.utils", "plone.subrequest")

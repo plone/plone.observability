@@ -18,6 +18,12 @@ from plone.observability.otel.transformchain import _SINGLE_SPAN_KEY
 from urllib.parse import urlsplit
 from zope.globalrequest import getRequest
 
+import wrapt
+
+
+_TARGET_MODULES = ("plone.app.blocks.utils", "plone.subrequest")
+_registered = False
+
 
 def _span_name(url):
     path = urlsplit(url or "").path.rstrip("/")
@@ -58,3 +64,25 @@ def _traced_subrequest(wrapped, instance, args, kwargs):
         if isinstance(status, int):
             span.set_attribute("http.status_code", status)
         return response
+
+
+def register():
+    """Wrap subrequest() in its caller modules via post-import hooks. Idempotent.
+
+    Targets modules by name so this is safe even when plone.subrequest /
+    plone.app.blocks are absent: the hooks stay inert until those modules import.
+    """
+    global _registered
+    if _registered:
+        return
+
+    def _patch(module):
+        try:
+            wrapt.wrap_function_wrapper(module, "subrequest", _traced_subrequest)
+        except Exception:
+            # Module present but no subrequest attr (API drift) -- skip silently.
+            pass
+
+    for name in _TARGET_MODULES:
+        wrapt.register_post_import_hook(_patch, name)
+    _registered = True
