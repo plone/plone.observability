@@ -56,7 +56,8 @@ def test_nests_under_transform_span(span_exporter, monkeypatch):
     )
 
     class _Req:
-        environ = {_SINGLE_SPAN_KEY: transform_span}
+        def __init__(self):
+            self.environ = {_SINGLE_SPAN_KEY: transform_span}
 
     monkeypatch.setattr(sr, "getRequest", lambda: _Req())
     _call(url="/p/@@tile", response=_Resp(200))
