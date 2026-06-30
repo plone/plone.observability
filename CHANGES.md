@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b13 (2026-06-30)
+
+### Bug fixes:
+
+- Fix the `/startup` probe never turning green under Kubernetes. `/startup` reported success only after `/ready` had been polled and passed at least once, but Kubernetes does not run the readiness probe until the startup probe has already succeeded — a chicken-and-egg that left pods stuck in *starting* for the whole startup-probe budget (CPU idle, since Plone had finished booting). `/startup` now evaluates the readiness checks itself and latches on first success, so it stands on its own. Thanks to Afonso on the Plone community forum for the report and a clear repro. ([#46](https://github.com/plone/plone.observability/issues/46))
+
+
 ## 1.0.0b12 (2026-06-30)
 
 ### New features:
