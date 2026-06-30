@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b12 (2026-06-30)
+
+### New features:
+
+- Trace ``plone.subrequest``-rendered tiles: emit one span per subrequest, nested under the active transform span, when ``plone.subrequest`` is installed. ([#43](https://github.com/plone/plone.observability/issues/43))
+
+
 ## 1.0.0b11 (2026-06-30)
 
 ### Bug fixes:
