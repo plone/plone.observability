@@ -1,0 +1,83 @@
+# plone.observability
+
+> Kubernetes-style health probes, a pluggable Prometheus and JSON metrics endpoint, and
+> optional OpenTelemetry tracing for Plone running in containers.
+
+plone.observability gives a container orchestrator the signals it needs to run Plone:
+separate liveness, readiness, and startup probes on a dedicated port, a `@@metrics`
+endpoint, and event-driven OpenTelemetry spans. Everything is registered through the
+Zope Component Architecture and can be extended or replaced.
+
+## Key Facts
+
+- Package: plone.observability
+- License: GPL-2.0-only
+- Python: 3.10+
+- Plone: 6
+- Repository: https://github.com/plone/plone.observability
+- Docs: https://plone.github.io/plone.observability/
+
+## Health probes
+
+Run on a dedicated port (default 8081) in a background daemon thread, separate from the
+Zope WSGI server, so they stay answerable when all worker threads are busy. Started by the
+`egg:plone.observability#healthserver` WSGI filter, not on Zope process startup.
+
+- `/live` — liveness; must not touch ZODB or block. Failure means restart.
+- `/ready` — readiness; evaluates ZODB connectivity. Failure means drain traffic.
+- `/startup` — startup; evaluates readiness checks itself and latches on first success,
+  because Kubernetes does not run the readiness probe until startup has succeeded.
+
+All return JSON, 200 on success and 503 on failure.
+
+## Metrics
+
+`@@metrics` is a browser view on `OFS.interfaces.IApplication`. It collects from all
+`IMetricProvider` adapters and serializes with an `IMetricFormatter`. Default format is
+Prometheus text; `?format=json` or `Accept: application/json` gives JSON. Request metrics
+require the `egg:plone.observability#observability` WSGI filter.
+
+Metrics carry a `scope` label: `global` (same across instances sharing a ZODB — read from
+one instance) or `instance` (per process — sum across instances). Request metrics also
+carry `auth="authenticated"|"anonymous"`. User identity is never a metric label — only a
+span attribute — to keep label cardinality bounded.
+
+Built-in metrics include uptime, info, threads, RSS, CPU, requests_total,
+request_duration_seconds (sum/bucket/max), request_errors, zodb object_count/db_size_bytes/
+connections/cache_size(_bytes)/loads_total/stores_total/conflicts_total, and
+content_total/by_state. The ZODB load/store counters come from a storage-agnostic activity
+monitor installed only if none exists. Conflict counters carry `retry="true"|"false"`.
+The expensive global gauges and content counts are cached (default 60s,
+PLONE_OBSERVABILITY_METRICS_CACHE_TTL).
+
+## OpenTelemetry tracing (optional extra)
+
+Install `plone.observability[opentelemetry]`. OTel-native: honors `OTEL_*` env vars and
+activates when an OTLP endpoint is set. Spans come from Zope events, not monkeypatching:
+ZPublisher.publish, catalog.searchResults/unrestrictedSearchResults, transaction.commit,
+transformchain + transform.<name>, and plone.subrequest spans. The root WSGI span needs the
+`egg:plone.observability#opentelemetry` filter. The `@@metrics` scrape is excluded by
+default; exclude more paths with `OTEL_PYTHON_WSGI_EXCLUDED_URLS`. Open custom spans with
+`from plone.observability.spans import start_span` (no-op without the extra).
+
+## Configuration (environment variables)
+
+- PLONE_OBSERVABILITY_HEALTH_HOST (default 0.0.0.0)
+- PLONE_OBSERVABILITY_HEALTH_PORT (default 8081; 0 disables)
+- PLONE_OBSERVABILITY_METRICS_ALLOWLIST (default empty/open; comma-separated CIDRs)
+- PLONE_OBSERVABILITY_TRUSTED_PROXIES (default 127.0.0.1,::1)
+- PLONE_OBSERVABILITY_METRICS_CACHE_TTL (default 60)
+- PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR (default 1; 0 disables)
+- OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, OTEL_TRACES_SAMPLER,
+  OTEL_PYTHON_WSGI_EXCLUDED_URLS
+- PLONE_OBSERVABILITY_OTEL_ENABLED (1/0 master override)
+- PLONE_OBSERVABILITY_OTEL_EXCLUDE_DEFAULTS (default 1)
+- PLONE_OBSERVABILITY_OTEL_USER_ID (default off; adds enduser.id PII to spans)
+
+## Extensibility (ZCA)
+
+- ILivenessCheck / IReadinessCheck — named utilities returning (ok, message)
+- IMetricProvider — adapter on IApplication, `collect()` yields Metric(name, value, type,
+  scope, help) from `plone.observability.metric`
+- IMetricFormatter — named utility with `content_type` and `format(metrics)`, selected via
+  `?format=<name>`
