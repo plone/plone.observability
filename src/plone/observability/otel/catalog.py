@@ -8,6 +8,7 @@ plone-pgcatalog (plone.pgcatalog PlonePGCatalogTool), which is a standalone tool
 that never touches ZCatalog's low-level search.
 """
 
+from plone.observability.otel import exclusions
 from plone.observability.otel.provider import is_enabled
 from plone.observability.spans import start_span
 
@@ -20,7 +21,7 @@ _patched = []
 
 def _make_wrapper(span_name, original):
     def wrapper(self, *args, **kwargs):
-        if not is_enabled():
+        if not is_enabled() or exclusions.is_suppressed():
             return original(self, *args, **kwargs)
         with start_span(span_name) as span:
             results = original(self, *args, **kwargs)

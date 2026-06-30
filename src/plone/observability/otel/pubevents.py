@@ -13,6 +13,7 @@ from opentelemetry.trace import Status
 from opentelemetry.trace import StatusCode
 from plone.base.utils import boolean_value
 from plone.observability.auth import get_auth_info
+from plone.observability.otel import exclusions
 from plone.observability.otel.provider import is_enabled
 from plone.observability.otel.provider import TRACER_NAME
 
@@ -35,6 +36,12 @@ _TOKEN_KEY = "plone.observability.otel.publish_token"
 
 def on_pub_start(event):
     if not is_enabled():
+        return
+    if exclusions.is_excluded(event.request.get("PATH_INFO", "")):
+        # Excluded path: emit no publish span, and mark the request suppressed so
+        # the catalog/zodb/transformchain subscribers skip their spans too (they
+        # would otherwise be exported as root spans). Detached in _finish.
+        event.request.environ[_TOKEN_KEY] = exclusions.suppress_token()
         return
     tracer = trace.get_tracer(TRACER_NAME)
     span = tracer.start_span("ZPublisher.publish")

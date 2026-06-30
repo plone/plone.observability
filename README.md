@@ -301,8 +301,21 @@ configured. `PLONE_OBSERVABILITY_OTEL_ENABLED` is the master on/off override.
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint (enables tracing) |
 | `OTEL_SERVICE_NAME` | Service name on emitted spans |
 | `OTEL_TRACES_SAMPLER` | Sampling strategy |
+| `OTEL_PYTHON_WSGI_EXCLUDED_URLS` | Comma-separated regexes of paths to never trace (falls back to `OTEL_PYTHON_EXCLUDED_URLS`) |
 | `PLONE_OBSERVABILITY_OTEL_ENABLED` | `1`/`0` master override |
+| `PLONE_OBSERVABILITY_OTEL_EXCLUDE_DEFAULTS` | `1`/`0`; default-exclude the package's own `@@metrics` scrape (default `1`) |
 | `PLONE_OBSERVABILITY_OTEL_USER_ID` | include `enduser.id` (PII) on spans; default off |
+
+### Excluding paths from tracing
+
+The package's own `@@metrics` scrape (every ~30s) is **excluded by default**, so
+it never floods your traces; set `PLONE_OBSERVABILITY_OTEL_EXCLUDE_DEFAULTS=0` to
+trace it anyway. Exclude additional paths with the standard
+`OTEL_PYTHON_WSGI_EXCLUDED_URLS` (comma-separated regexes, matched as a substring
+search against the path). Exclusion is applied at **both** layers — the WSGI root
+span and the event-driven publishing/catalog/zodb/transformchain spans — so an
+excluded path produces **no spans at all**, not just a missing outer span. (The
+health probes run on the separate health server and are never traced.)
 
 Add the `egg:plone.observability#opentelemetry` filter to your WSGI pipeline for
 the root request span — see [WSGI Middleware for Request Metrics](#wsgi-middleware-for-request-metrics)

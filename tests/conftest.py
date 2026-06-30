@@ -48,3 +48,17 @@ def span_exporter(_otel_provider):
     _otel_provider.clear()
     yield _otel_provider
     _otel_provider.clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_otel_exclusions_cache():
+    """Excluded-URL config is memoized at module level; reset it per test so
+    one test's env does not leak into the next."""
+    try:
+        from plone.observability.otel import exclusions
+    except ImportError:
+        yield
+        return
+    exclusions.reset_cache()
+    yield
+    exclusions.reset_cache()

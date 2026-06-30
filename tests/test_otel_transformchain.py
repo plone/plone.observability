@@ -113,6 +113,20 @@ def test_flush_on_request_end_closes_spans_left_open_by_a_raising_transform(
     assert not [k for k in req.environ if k.startswith("plone.observability.otel")]
 
 
+def test_noop_when_suppressed(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    from plone.observability.otel import exclusions
+    from plone.observability.otel import transformchain as tc
+
+    req = FakeRequest()
+    token = exclusions.suppress_token()
+    try:
+        _run_chain(tc, req, ["theme"])
+    finally:
+        exclusions.detach(token)
+    assert span_exporter.get_finished_spans() == ()
+
+
 def test_handlers_are_safe_when_chain_never_started(span_exporter, monkeypatch):
     monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
     from plone.observability.otel import transformchain as tc

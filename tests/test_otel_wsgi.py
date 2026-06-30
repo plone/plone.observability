@@ -20,6 +20,28 @@ def test_make_filter_creates_server_span(span_exporter):
     assert any(s.kind.name == "SERVER" for s in spans)
 
 
+def test_make_filter_excludes_metrics_path(span_exporter):
+    from plone.observability.otel.wsgi import make_filter
+
+    def app(environ, start_response):
+        start_response("200 OK", [("Content-Type", "text/plain")])
+        return [b"ok"]
+
+    wrapped = make_filter(app, {})
+    environ = {
+        "REQUEST_METHOD": "GET",
+        "PATH_INFO": "/Plone/@@metrics",
+        "SERVER_NAME": "localhost",
+        "SERVER_PORT": "80",
+        "wsgi.url_scheme": "http",
+    }
+    body = b"".join(wrapped(environ, lambda status, headers, exc=None: None))
+    assert body == b"ok"
+    # the scrape endpoint is excluded -> no WSGI server span at all
+    spans = span_exporter.get_finished_spans()
+    assert not any(s.kind.name == "SERVER" for s in spans)
+
+
 def test_make_filter_activates_when_enabled(monkeypatch):
     from plone.observability.otel import catalog
     from plone.observability.otel import provider

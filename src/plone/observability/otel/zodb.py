@@ -1,6 +1,7 @@
 """ZODB commit span via a transaction synchronizer (no monkeypatching)."""
 
 from opentelemetry import trace
+from plone.observability.otel import exclusions
 from plone.observability.otel.provider import is_enabled
 from plone.observability.otel.provider import TRACER_NAME
 
@@ -19,7 +20,7 @@ class CommitTracer:
         pass
 
     def beforeCompletion(self, transaction):
-        if not is_enabled():
+        if not is_enabled() or exclusions.is_suppressed():
             return
         tracer = trace.get_tracer(TRACER_NAME)
         self._spans[id(transaction)] = tracer.start_span("transaction.commit")

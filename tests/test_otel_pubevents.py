@@ -60,6 +60,33 @@ def test_publish_noop_when_disabled(span_exporter, monkeypatch):
     assert span_exporter.get_finished_spans() == ()
 
 
+def test_excluded_path_emits_no_publish_span(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    from plone.observability.otel import pubevents
+
+    req = FakeRequest("/Plone/@@metrics")
+    pubevents.on_pub_start(PubStart(req))
+    pubevents.on_after_traversal(PubAfterTraversal(req))
+    pubevents.on_pub_success(PubSuccess(req))
+    assert span_exporter.get_finished_spans() == ()
+
+
+def test_excluded_path_marks_suppressed_during_request(monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    from plone.observability.otel import exclusions
+    from plone.observability.otel import pubevents
+
+    req = FakeRequest("/@@metrics")
+    pubevents.on_pub_start(PubStart(req))
+    try:
+        # subscribers running during the request see suppression
+        assert exclusions.is_suppressed() is True
+    finally:
+        pubevents.on_pub_success(PubSuccess(req))
+    # context restored after the request
+    assert exclusions.is_suppressed() is False
+
+
 def _auth_user(monkeypatch, name="alice", uid="alice-id"):
     from plone.observability import auth
 

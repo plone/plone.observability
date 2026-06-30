@@ -18,6 +18,7 @@ request-end flush closes any spans left dangling.
 
 from opentelemetry import trace
 from opentelemetry.trace import set_span_in_context
+from plone.observability.otel import exclusions
 from plone.observability.otel.provider import is_enabled
 from plone.observability.otel.provider import TRACER_NAME
 
@@ -28,7 +29,7 @@ _SINGLE_SPAN_KEY = "plone.observability.otel.transform_span"
 
 
 def on_before_transforms(event):
-    if not is_enabled():
+    if not is_enabled() or exclusions.is_suppressed():
         return
     tracer = trace.get_tracer(TRACER_NAME)
     # Child of the current context -- the publish span during a request.

@@ -53,6 +53,23 @@ def test_noop_when_disabled(span_exporter, monkeypatch, catalog_module):
     assert span_exporter.get_finished_spans() == ()
 
 
+def test_noop_when_suppressed(span_exporter, monkeypatch, catalog_module):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    from plone.observability.otel import exclusions
+
+    class FakeTool:
+        def searchResults(self, query=None, **kw):
+            return [1, 2]
+
+    catalog_module._instrument_class(FakeTool)
+    token = exclusions.suppress_token()
+    try:
+        assert FakeTool().searchResults() == [1, 2]  # still works, just untraced
+    finally:
+        exclusions.detach(token)
+    assert span_exporter.get_finished_spans() == ()
+
+
 def test_instrument_catalog_wraps_standard_plone(catalog_module):
     from Products.CMFPlone.CatalogTool import CatalogTool
 
