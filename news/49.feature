@@ -1,0 +1,1 @@
+Record objects loaded/stored per span (``plone.zodb.objects_loaded`` / ``plone.zodb.objects_stored``) on the publish span (request total) and each subrequest span (per-tile delta), making N+1 object-load cost visible in traces. ([#49](https://github.com/plone/plone.observability/issues/49))

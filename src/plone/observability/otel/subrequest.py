@@ -11,6 +11,7 @@ from opentelemetry import trace
 from opentelemetry.trace import set_span_in_context
 from opentelemetry.trace import Status
 from opentelemetry.trace import StatusCode
+from plone.observability.otel import dbcounts
 from plone.observability.otel import exclusions
 from plone.observability.otel.provider import is_enabled
 from plone.observability.otel.provider import TRACER_NAME
@@ -31,9 +32,8 @@ def _span_name(url):
     return f"subrequest {segment}" if segment else "subrequest"
 
 
-def _parent_context():
+def _parent_context(request):
     """Context nesting the span under the active transform span, else current."""
-    request = getRequest()
     if request is not None:
         try:
             span = request.environ.get(_SINGLE_SPAN_KEY)
@@ -48,18 +48,21 @@ def _traced_subrequest(wrapped, instance, args, kwargs):
     if not is_enabled() or exclusions.is_suppressed():
         return wrapped(*args, **kwargs)
     url = args[0] if args else kwargs.get("url", "")
+    request = getRequest()
     tracer = trace.get_tracer(TRACER_NAME)
     with tracer.start_as_current_span(
-        _span_name(url), context=_parent_context()
+        _span_name(url), context=_parent_context(request)
     ) as span:
         span.set_attribute("http.url", url)
         span.set_attribute("http.method", "GET")
+        before = dbcounts.read_counts(request)
         try:
             response = wrapped(*args, **kwargs)
         except Exception as exc:
             span.set_status(Status(StatusCode.ERROR))
             span.record_exception(exc)
             raise
+        dbcounts.annotate(span, before, dbcounts.read_counts(request))
         status = getattr(response, "status", None)
         if isinstance(status, int):
             span.set_attribute("http.status_code", status)
