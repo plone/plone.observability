@@ -13,6 +13,7 @@ from opentelemetry.trace import Status
 from opentelemetry.trace import StatusCode
 from plone.base.utils import boolean_value
 from plone.observability.auth import get_auth_info
+from plone.observability.otel import dbcounts
 from plone.observability.otel import exclusions
 from plone.observability.otel.provider import is_enabled
 from plone.observability.otel.provider import TRACER_NAME
@@ -32,6 +33,7 @@ def _user_id_enabled():
 
 _SPAN_KEY = "plone.observability.otel.publish_span"
 _TOKEN_KEY = "plone.observability.otel.publish_token"
+_ZODB_BASELINE_KEY = "plone.observability.otel.zodb_baseline"
 
 
 def on_pub_start(event):
@@ -48,6 +50,7 @@ def on_pub_start(event):
     token = otel_context.attach(set_span_in_context(span))
     event.request.environ[_SPAN_KEY] = span
     event.request.environ[_TOKEN_KEY] = token
+    event.request.environ[_ZODB_BASELINE_KEY] = dbcounts.read_counts(event.request)
 
 
 def on_after_traversal(event):
@@ -71,6 +74,8 @@ def _finish(request, error=None):
     span.set_attribute("enduser.authenticated", authenticated)
     if authenticated and user_id and _user_id_enabled():
         span.set_attribute("enduser.id", str(user_id))
+    before = request.environ.pop(_ZODB_BASELINE_KEY, None)
+    dbcounts.annotate(span, before, dbcounts.read_counts(request))
     if error is not None:
         span.set_status(Status(StatusCode.ERROR))
         span.record_exception(error)
