@@ -2,6 +2,22 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b14 (2026-07-01)
+
+### New features:
+
+- Record objects loaded/stored per span (``plone.zodb.objects_loaded`` / ``plone.zodb.objects_stored``) on the publish span (request total) and each subrequest span (per-tile delta), making N+1 object-load cost visible in traces. ([#49](https://github.com/plone/plone.observability/issues/49))
+
+### Internal:
+
+- Add a `Documentation` GitHub Actions workflow that builds the Sphinx docs with uv and deploys them to GitHub Pages on every push to `main` that touches `docs/**`, matching the convention used across the cloudbrine ecosystem repositories.
+- Exclude ``docs/`` from the zpretty pre-commit hook: its Sphinx/Jinja HTML templates are not ZCML/Zope page templates.
+
+### Documentation:
+
+- Replace the single long `README.md` with a structured Sphinx documentation site under `docs/sources/`, organized by the Diataxis framework (tutorials, how-to, reference, explanation) and matching the cloudbrine ecosystem convention (shibuya theme, ecosystem dashboard, `llms.txt`). The `README.md` is now a short pointer to the docs site.
+
+
 ## 1.0.0b13 (2026-06-30)
 
 ### Bug fixes:
