@@ -2,6 +2,18 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0b15 (2026-07-01)
+
+### New features:
+
+- Add ``plone.zodb.load_time_ms`` to every span that already carries the ZODB object counts (publish, subrequest, viewlet/portlet render): the time spent materialising objects (round-trip + decode), so per-tile/per-request object-load cost is visible in traces.
+- Trace the ClassicUI render phase: emit spans per viewlet manager, per body viewlet, per portlet column and per portlet (head viewlet managers collapse to a single span), each carrying the per-span ZODB object-load counts. Disable with ``PLONE_OBSERVABILITY_OTEL_RENDER=0``.
+
+### Documentation:
+
+- Add a how-to guide, *How to add custom spans in your code*, covering the `start_span` helper for instrumenting add-on and project code with OpenTelemetry spans.
+
+
 ## 1.0.0b14 (2026-07-01)
 
 ### New features:
