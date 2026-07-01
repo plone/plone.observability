@@ -1,0 +1,1 @@
+Add ``plone.zodb.load_time_ms`` to every span that already carries the ZODB object counts (publish, subrequest, viewlet/portlet render): the time spent materialising objects (round-trip + decode), so per-tile/per-request object-load cost is visible in traces.
