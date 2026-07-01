@@ -1,0 +1,1 @@
+Trace the ClassicUI render phase: emit spans per viewlet manager, per body viewlet, per portlet column and per portlet (head viewlet managers collapse to a single span), each carrying the per-span ZODB object-load counts. Disable with ``PLONE_OBSERVABILITY_OTEL_RENDER=0``.
