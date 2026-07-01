@@ -115,9 +115,7 @@ def test_publish_span_carries_request_total(span_exporter, monkeypatch):
     pubevents.on_pub_success(PubSuccess(req))
 
     span = next(
-        s
-        for s in span_exporter.get_finished_spans()
-        if s.name == "ZPublisher.publish"
+        s for s in span_exporter.get_finished_spans() if s.name == "ZPublisher.publish"
     )
     assert span.attributes["plone.zodb.objects_loaded"] == 42
     assert span.attributes["plone.zodb.objects_stored"] == 3
