@@ -20,6 +20,24 @@ import os
 _patched = []
 
 _HEAD_INTERFACE_NAMES = ("IHTTPHeaders", "IHtmlHead", "IHtmlHeadLinks", "IScripts")
+_head_ifaces = None  # resolved once on first use (see _head_interfaces)
+
+
+def _head_interfaces():
+    """The head viewlet-manager interfaces, imported and resolved once."""
+    global _head_ifaces
+    if _head_ifaces is None:
+        try:
+            from plone.app.layout.viewlets import interfaces as vi
+        except ImportError:
+            _head_ifaces = ()
+        else:
+            _head_ifaces = tuple(
+                iface
+                for iface in (getattr(vi, n, None) for n in _HEAD_INTERFACE_NAMES)
+                if iface is not None
+            )
+    return _head_ifaces
 
 
 def _render_enabled():
@@ -33,15 +51,7 @@ def _active():
 
 
 def _is_head_manager(manager):
-    try:
-        from plone.app.layout.viewlets import interfaces as vi
-    except ImportError:
-        return False
-    for iface_name in _HEAD_INTERFACE_NAMES:
-        iface = getattr(vi, iface_name, None)
-        if iface is not None and iface.providedBy(manager):
-            return True
-    return False
+    return any(iface.providedBy(manager) for iface in _head_interfaces())
 
 
 def _wrap_child_render(child, request, span_name):
