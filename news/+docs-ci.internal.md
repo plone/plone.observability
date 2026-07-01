@@ -1,1 +1,0 @@
-Add a `Documentation` GitHub Actions workflow that builds the Sphinx docs with uv and deploys them to GitHub Pages on every push to `main` that touches `docs/**`, matching the convention used across the cloudbrine ecosystem repositories.

@@ -1,1 +1,0 @@
-Replace the single long `README.md` with a structured Sphinx documentation site under `docs/sources/`, organized by the Diataxis framework (tutorials, how-to, reference, explanation) and matching the cloudbrine ecosystem convention (shibuya theme, ecosystem dashboard, `llms.txt`). The `README.md` is now a short pointer to the docs site.
