@@ -150,3 +150,69 @@ def test_register_idempotent_and_unregister_restores():
     assert ViewletManagerBase.render is not original
     rendering.unregister()
     assert ViewletManagerBase.render is original
+
+
+class _PortletRenderer:
+    def __init__(self, html, conn=None, loads=0):
+        self._html = html
+        self._conn = conn
+        self._loads = loads
+
+    def render(self):
+        if self._conn is not None:
+            self._conn.loads += self._loads
+        return self._html
+
+
+def _make_portlet_manager(portlets, request, column="plone.leftcolumn"):
+    from plone.portlets.manager import PortletManagerRenderer
+
+    class _Mgr:
+        __name__ = column
+
+    class _FakePortletRenderer(PortletManagerRenderer):
+        def __init__(self):
+            self.request = request
+            self.manager = _Mgr()
+            self.template = None
+            self._portlets = portlets
+            # PortletManagerRenderer.render() guards on this name-mangled flag
+            self._PortletManagerRenderer__updated = True
+
+        def portletsToShow(self):
+            return self._portlets
+
+    return _FakePortletRenderer()
+
+
+def test_portlet_column_and_portlet_spans(span_exporter, monkeypatch):
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_ENABLED", "1")
+    from plone.observability.otel import rendering
+
+    rendering.register()
+    conn = _Conn()
+    req = _Req(conn)
+    mgr = _make_portlet_manager(
+        [
+            {
+                "name": "navigation",
+                "renderer": _PortletRenderer("<nav/>", conn=conn, loads=5),
+            },
+            {"name": "recent", "renderer": _PortletRenderer("<ul/>")},
+        ],
+        req,
+    )
+    out = mgr.render()
+
+    assert out == "<nav/>\n<ul/>"
+    spans = {s.name: s for s in span_exporter.get_finished_spans()}
+    assert (
+        spans["portletcolumn plone.leftcolumn"].attributes["plone.portletmanager.name"]
+        == "plone.leftcolumn"
+    )
+    assert "portlet navigation" in spans
+    assert spans["portlet navigation"].attributes["plone.zodb.objects_loaded"] == 5
+    assert (
+        spans["portlet navigation"].parent.span_id
+        == spans["portletcolumn plone.leftcolumn"].context.span_id
+    )

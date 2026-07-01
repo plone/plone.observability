@@ -82,6 +82,34 @@ def _traced_viewletmanager_render(original):
     return render
 
 
+def _traced_portletmanager_render(original):
+    def render(self):
+        if not _active():
+            return original(self)
+        manager = getattr(self, "manager", None)
+        name = getattr(manager, "__name__", "") or type(self).__name__
+        request = getattr(self, "request", None)
+        before = dbcounts.read_counts(request)
+        with start_span(f"portletcolumn {name}") as span:
+            try:
+                portlets = self.portletsToShow()
+            except Exception:
+                portlets = []
+            for p in portlets:
+                renderer = p.get("renderer")
+                if renderer is None:
+                    continue
+                pname = p.get("name") or type(renderer).__name__
+                _wrap_child_render(renderer, request, f"portlet {pname}")
+            result = original(self)
+            if span is not None:
+                span.set_attribute("plone.portletmanager.name", name)
+                dbcounts.annotate(span, before, dbcounts.read_counts(request))
+            return result
+
+    return render
+
+
 def _patch(cls, attr, make_wrapper):
     original = cls.__dict__.get(attr) or getattr(cls, attr, None)
     if original is None or getattr(original, "_otel_wrapped", False):
@@ -101,10 +129,19 @@ def _patch_viewlets():
     _patch(ViewletManagerBase, "render", _traced_viewletmanager_render)
 
 
+def _patch_portlets():
+    try:
+        from plone.portlets.manager import PortletManagerRenderer
+    except ImportError:
+        return
+    _patch(PortletManagerRenderer, "render", _traced_portletmanager_render)
+
+
 def register():
     if _patched:
         return
     _patch_viewlets()
+    _patch_portlets()
 
 
 def unregister():
