@@ -18,3 +18,6 @@ repos:
     rev: 4.0.3
     hooks:
       - id: zpretty
+        # zpretty's default pattern includes *.html; the Sphinx/Jinja templates
+        # under docs/ are not ZCML/Zope page templates, so keep zpretty off them.
+        exclude: ^docs/

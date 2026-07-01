@@ -1,0 +1,1 @@
+Exclude ``docs/`` from the zpretty pre-commit hook: its Sphinx/Jinja HTML templates are not ZCML/Zope page templates.
