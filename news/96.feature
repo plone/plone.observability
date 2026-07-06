@@ -1,1 +1,0 @@
-Rename the misnamed ``plone.zodb.load_pg_queries`` span attribute (it counted objects) to ``plone.zodb.load_pg_objects``, and add a real ``plone.zodb.load_pg_queries`` reading zodb-pgjsonb's new ``_pg_query_count`` (PostgreSQL round-trips, >= 1.16.0). Their ratio (``load_pg_objects / load_pg_queries``) makes batching/prefetch visible per span.
