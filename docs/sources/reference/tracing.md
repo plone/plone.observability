@@ -30,6 +30,22 @@ The root request span requires the `opentelemetry` WSGI filter.
 Without it you still get the publishing, catalog, and commit spans, which are registered through ZCML, but not the outer WSGI span.
 See {doc}`/how-to/enable-opentelemetry-tracing`.
 
+## Per-span ZODB attributes
+
+The `ZPublisher.publish` span (request total), each subrequest span (per-tile delta), and each render span carry per-span ZODB object-load counts:
+
+| Attribute | Meaning |
+|---|---|
+| `plone.zodb.objects_loaded` | objects materialised (loaded) within the span |
+| `plone.zodb.objects_stored` | objects stored within the span |
+| `plone.zodb.load_time_ms` | time spent materialising objects (round-trip + decode) |
+| `plone.zodb.load_l2_hits` | objects served from zodb-pgjsonb's shared (L2) cache |
+| `plone.zodb.load_pg_objects` | objects fetched from PostgreSQL |
+| `plone.zodb.load_pg_queries` | PostgreSQL round-trips (queries) |
+
+The last three require zodb-pgjsonb (>= 1.16.0 for `load_pg_queries`); on other storages they read as 0 (best-effort, no dependency).
+`load_pg_objects / load_pg_queries` is objects-per-round-trip: ≈ 1 signals an N+1 pattern, ≫ 1 signals well-batched loads (`load_multiple`/`prefetch`), so `prefetch` adoption is visible without a wall-time A/B.
+
 ## Custom spans
 
 Application code can open child spans with a dependency-optional helper.

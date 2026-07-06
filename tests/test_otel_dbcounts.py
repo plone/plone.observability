@@ -4,9 +4,10 @@
 class _Storage:
     """Fake per-connection storage exposing zodb-pgjsonb load counters."""
 
-    def __init__(self, l2=0, pg=0):
+    def __init__(self, l2=0, pg=0, pg_queries=0):
         self._l2_load_hits = l2
         self._pg_load_count = pg
+        self._pg_query_count = pg_queries
 
 
 class _Conn:
@@ -44,8 +45,10 @@ class _Span:
 def test_read_counts_peeks_without_reset():
     from plone.observability.otel import dbcounts
 
-    conn = _Conn(loads=5, stores=2, load_time_ns=9, storage=_Storage(l2=3, pg=4))
-    assert dbcounts.read_counts(_Req(conn)) == (5, 2, 9, 3, 4)
+    conn = _Conn(
+        loads=5, stores=2, load_time_ns=9, storage=_Storage(l2=3, pg=4, pg_queries=1)
+    )
+    assert dbcounts.read_counts(_Req(conn)) == (5, 2, 9, 3, 4, 1)
     assert conn.clear_args == [False]  # peek, never reset
 
 
@@ -54,7 +57,7 @@ def test_read_counts_defaults_cache_counters_to_zero():
     from plone.observability.otel import dbcounts
 
     conn = _Conn(loads=5, stores=2, load_time_ns=9)  # no _storage
-    assert dbcounts.read_counts(_Req(conn)) == (5, 2, 9, 0, 0)
+    assert dbcounts.read_counts(_Req(conn)) == (5, 2, 9, 0, 0, 0)
 
 
 def test_read_counts_none_without_connection():
@@ -68,11 +71,12 @@ def test_annotate_sets_delta_including_zero():
     from plone.observability.otel import dbcounts
 
     span = _Span()
-    dbcounts.annotate(span, (1, 1, 1_000_000, 2, 10), (4, 1, 6_000_000, 9, 11))
+    dbcounts.annotate(span, (1, 1, 1_000_000, 2, 10, 5), (4, 1, 6_000_000, 9, 11, 6))
     assert span.attrs["plone.zodb.objects_loaded"] == 3
     assert span.attrs["plone.zodb.objects_stored"] == 0
     assert span.attrs["plone.zodb.load_time_ms"] == 5.0
     assert span.attrs["plone.zodb.load_l2_hits"] == 7
+    assert span.attrs["plone.zodb.load_pg_objects"] == 1
     assert span.attrs["plone.zodb.load_pg_queries"] == 1
 
 
@@ -126,7 +130,8 @@ def test_subrequest_span_carries_cache_counters(span_exporter, monkeypatch):
     def fake(url, **kw):
         conn.loads += 151  # the tile "loads" 151 objects ...
         storage._l2_load_hits += 140  # ... 140 from the shared cache ...
-        storage._pg_load_count += 11  # ... 11 from PostgreSQL
+        storage._pg_load_count += 11  # ... 11 objects from PostgreSQL ...
+        storage._pg_query_count += 2  # ... in 2 round-trips (batched)
         return _Resp(200)
 
     sr._traced_subrequest(fake, None, ("/p/@@tile",), {})
@@ -135,7 +140,8 @@ def test_subrequest_span_carries_cache_counters(span_exporter, monkeypatch):
         s for s in span_exporter.get_finished_spans() if s.name == "subrequest @@tile"
     )
     assert span.attributes["plone.zodb.load_l2_hits"] == 140
-    assert span.attributes["plone.zodb.load_pg_queries"] == 11
+    assert span.attributes["plone.zodb.load_pg_objects"] == 11
+    assert span.attributes["plone.zodb.load_pg_queries"] == 2
 
 
 def test_subrequest_span_carries_load_time(span_exporter, monkeypatch):
