@@ -6,13 +6,6 @@ layout: landing
 
 ```{ecosystem-dashboard}
 
-- repo: plone/plone.observability
-  pypi: plone.observability
-  docs: https://plone.github.io/plone.observability/
-  icon: https://plone.github.io/plone.observability/_static/logo-web.png
-  group: Observability
-  description: Health probes, metrics, and tracing for Plone in containers
-
 - repo: bluedynamics/zodb-pgjsonb
   pypi: zodb-pgjsonb
   docs: https://bluedynamics.github.io/zodb-pgjsonb/
@@ -49,6 +42,18 @@ layout: landing
   docs: https://bluedynamics.github.io/cdk8s-plone/
   group: Deployment
   description: Deploy Plone backend and frontend to Kubernetes with cdk8s
+
+- repo: bluedynamics/cloud-vinyl
+  docs: https://bluedynamics.github.io/cloud-vinyl/
+  group: Deployment
+  description: Kubernetes operator for Vinyl Cache clusters
+
+- repo: plone/plone.observability
+  pypi: plone.observability
+  docs: https://plone.github.io/plone.observability/
+  icon: https://plone.github.io/plone.observability/_static/logo-web.png
+  group: Observability
+  description: Health probes, metrics, and tracing for Plone in containers
 
 - repo: bluedynamics/zodb-json-codec
   pypi: zodb-json-codec
