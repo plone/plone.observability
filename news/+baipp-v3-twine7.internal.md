@@ -1,1 +1,0 @@
-Bump `hynek/build-and-inspect-python-package` from v2 to v3.0.1. Hatchling now emits `Metadata-Version: 2.5`, which the Twine bundled in v2 rejects, failing the release build. v3 ships Twine 7, which supports it.
