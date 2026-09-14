@@ -2,6 +2,24 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0 (2026-09-14)
+
+First stable release. The package graduates from beta: the development status
+classifier is now *Production/Stable*. Functionally identical to 1.0.0b18.
+
+### Internal:
+
+- Bump `hynek/build-and-inspect-python-package` from v2 to v3.0.1. Hatchling now emits `Metadata-Version: 2.5`, which the Twine bundled in v2 rejects, failing the release build. v3 ships Twine 7, which supports it.
+- Enable ruff's cyclomatic-complexity check (`C901`, mccabe) with `max-complexity = 15`. The code base passes as-is.
+- Lower ruff's C901 max-complexity threshold from 15 to 13 as part of the ecosystem-wide complexity ratchet. The code base passes as-is.
+
+### Documentation:
+
+- Add `cloud-vinyl` to the ecosystem dashboard and to the ecosystem navigation
+  dropdown in the docs, and move the `plone.observability` dashboard entry after
+  the *Deployment* group so both copies of the dashboard stay in sync.
+
+
 ## 1.0.0b18 (2026-07-06)
 
 ### New features:
