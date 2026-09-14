@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import sys
+import tomllib
 
 
 sys.path.insert(0, str(Path(__file__).parent / "_ext"))
@@ -12,7 +13,10 @@ sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 project = "plone.observability"
 copyright = "2026, BlueDynamics Alliance"  # noqa: A001
 author = "Jens Klein and contributors"
-release = "1.0.0b13"
+
+# single source of truth for the version: pyproject.toml
+_pyproject = Path(__file__).parents[2] / "pyproject.toml"
+release = tomllib.loads(_pyproject.read_text())["project"]["version"]
 
 # -- General configuration ---------------------------------------------------
 
