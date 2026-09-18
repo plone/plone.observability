@@ -61,6 +61,9 @@ opentelemetry-io = [
     "opentelemetry-instrumentation-urllib3",
     "opentelemetry-instrumentation-httpx",
 ]
+opentelemetry-db = [
+    "opentelemetry-instrumentation-psycopg",
+]
 
 [project.entry-points."paste.filter_app_factory"]
 observability = "plone.observability.metrics.providers.request:make_filter"

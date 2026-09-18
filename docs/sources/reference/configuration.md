@@ -63,6 +63,12 @@ The standard `OTEL_*` variables are honored directly; the table below lists them
     Accepts `1` or `0`.
     Default: `1`.
 
+`PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS`
+:   Enable the optional external-I/O instrumentors (botocore, requests, urllib3, httpx, psycopg).
+    Each activates only when both the instrumentation package (`opentelemetry-io` / `opentelemetry-db` extras) and the instrumented library are installed.
+    Accepts `1` or `0`.
+    Default: `0`.
+
 `PLONE_OBSERVABILITY_OTEL_USER_ID`
 :   Include `enduser.id` on spans.
     This is personally identifiable information; it is off by default.
