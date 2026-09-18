@@ -45,7 +45,7 @@ To trace the `@@metrics` scrape after all, turn the defaults off:
 export PLONE_OBSERVABILITY_OTEL_EXCLUDE_DEFAULTS=0
 ```
 
-## External I/O spans (S3, HTTP)
+## External I/O spans (S3, HTTP, SQL)
 
 By default only this package's own spans are emitted. To also trace external I/O — S3 blob access (botocore/boto3) and outbound HTTP (requests/urllib3/httpx) — install the instrumentor packages and switch them on:
 
@@ -54,7 +54,18 @@ pip install "plone.observability[opentelemetry,opentelemetry-io]"
 export PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS=1
 ```
 
-Every supported instrumentor whose package is installed is enabled; those calls then appear as child spans nested under the active request/publish/render span. Note that `requests` uses `urllib3` internally, so with both enabled a single requests call produces a `requests` span *and* a nested `urllib3` span — install only the instrumentor you want if that is noisy.
+Every supported instrumentor whose package is installed — together with the library it instruments — is enabled; those calls then appear as child spans nested under the active request/publish/render span. Note that `requests` uses `urllib3` internally, so with both enabled a single requests call produces a `requests` span *and* a nested `urllib3` span — install only the instrumentor you want if that is noisy.
+
+### SQL spans (psycopg)
+
+When the ZODB sits on PostgreSQL via [zodb-pgjsonb](https://bluedynamics.github.io/zodb-pgjsonb/), or anything else in the process talks to PostgreSQL through psycopg 3, the `opentelemetry-db` extra adds per-statement SQL spans under the same switch:
+
+```shell
+pip install "plone.observability[opentelemetry,opentelemetry-db]"
+export PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS=1
+```
+
+Each statement becomes a child span of the current request span, carrying the query as `db.statement`. A busy request can emit dozens of these — that is the point, but budget for the span volume in your collector. Connections opened before the WSGI pipeline is assembled (a storage's initial pool) are not instrumented; connections created afterwards (pool growth, reconnects) are.
 
 ```{seealso}
 - {doc}`/reference/tracing` for the emitted spans and their attributes.

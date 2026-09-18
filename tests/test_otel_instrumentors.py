@@ -39,6 +39,7 @@ def test_switch_on_instruments_available_and_skips_missing(monkeypatch):
     from plone.observability.otel import instrumentors
 
     monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS", "1")
+    monkeypatch.setattr(instrumentors, "_target_installed", lambda name: True)
     fakes = {
         "BotocoreInstrumentor": _FakeInstrumentor(),
         "RequestsInstrumentor": _FakeInstrumentor(),
@@ -56,6 +57,7 @@ def test_enable_is_idempotent(monkeypatch):
     from plone.observability.otel import instrumentors
 
     monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS", "1")
+    monkeypatch.setattr(instrumentors, "_target_installed", lambda name: True)
     fake = _FakeInstrumentor()
     monkeypatch.setattr(
         instrumentors,
@@ -72,6 +74,7 @@ def test_failing_instrumentor_is_skipped(monkeypatch):
     from plone.observability.otel import instrumentors
 
     monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS", "1")
+    monkeypatch.setattr(instrumentors, "_target_installed", lambda name: True)
     boom = _FakeInstrumentor(fail=True)
     ok = _FakeInstrumentor()
     mapping = {"BotocoreInstrumentor": boom, "RequestsInstrumentor": ok}
@@ -88,6 +91,7 @@ def test_disable_uninstruments_and_allows_reenable(monkeypatch):
     from plone.observability.otel import instrumentors
 
     monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS", "1")
+    monkeypatch.setattr(instrumentors, "_target_installed", lambda name: True)
     fake = _FakeInstrumentor()
     monkeypatch.setattr(
         instrumentors,
@@ -113,3 +117,32 @@ def test_switch_on_parses_env(monkeypatch):
     assert instrumentors._switch_on() is False
     monkeypatch.delenv("PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS", raising=False)
     assert instrumentors._switch_on() is False
+
+
+def test_psycopg_is_supported():
+    from plone.observability.otel import instrumentors
+
+    assert (
+        "psycopg",
+        "opentelemetry.instrumentation.psycopg",
+        "PsycopgInstrumentor",
+    ) in instrumentors._SUPPORTED
+
+
+def test_missing_target_library_is_skipped(monkeypatch):
+    """The instrumentation package alone is not enough: the instrumented
+    library itself must be importable, else the instrumentor is skipped."""
+    from plone.observability.otel import instrumentors
+
+    monkeypatch.setenv("PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS", "1")
+    fake = _FakeInstrumentor()
+    monkeypatch.setattr(instrumentors, "_load", lambda mp, cn: fake)
+    monkeypatch.setattr(
+        instrumentors,
+        "_target_installed",
+        lambda name: name not in ("psycopg", "botocore"),
+    )
+
+    instrumentors.enable()
+
+    assert fake.instrumented == len(instrumentors._SUPPORTED) - 2
