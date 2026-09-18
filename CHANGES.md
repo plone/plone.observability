@@ -2,6 +2,34 @@
 
 <!-- towncrier release notes start -->
 
+## 1.1.0 (2026-09-18)
+
+### New features:
+
+- Add an optional psycopg instrumentor: with the new ``opentelemetry-db`` extra
+  installed and ``PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS=1``, every PostgreSQL
+  statement (e.g. ZODB loads/stores and catalog queries under zodb-pgjsonb)
+  becomes a child span of the current request span. Instrumentors now also check
+  that the instrumented library itself is installed, not just the instrumentation
+  package. ([#74](https://github.com/plone/plone.observability/issues/74))
+
+### Internal:
+
+- Deploy the documentation on `release: published` as well, so every release
+  republishes the docs with the freshly bumped version. Release PRs do not touch
+  `docs/**`, so the push trigger alone left the site on the previous version
+  until the next docs commit.
+
+### Documentation:
+
+- Add a how-to guide, *How to trace one request across the whole stack*, covering
+  W3C trace-context propagation through the ingress (Traefik), Varnish, the Volto
+  SSR server, the backend, and down to per-statement PostgreSQL spans.
+- Read the documentation version from `pyproject.toml` instead of a hardcoded
+  string in `conf.py`, which had been stuck at 1.0.0b13. The published docs now
+  always show the released version.
+
+
 ## 1.0.0 (2026-09-14)
 
 First stable release. The package graduates from beta: the development status
