@@ -56,6 +56,8 @@ export PLONE_OBSERVABILITY_OTEL_INSTRUMENTORS=1
 
 Every supported instrumentor whose package is installed — together with the library it instruments — is enabled; those calls then appear as child spans nested under the active request/publish/render span. Note that `requests` uses `urllib3` internally, so with both enabled a single requests call produces a `requests` span *and* a nested `urllib3` span — install only the instrumentor you want if that is noisy.
 
+(sql-spans-psycopg)=
+
 ### SQL spans (psycopg)
 
 When the ZODB sits on PostgreSQL via [zodb-pgjsonb](https://bluedynamics.github.io/zodb-pgjsonb/), or anything else in the process talks to PostgreSQL through psycopg 3, the `opentelemetry-db` extra adds per-statement SQL spans under the same switch:
