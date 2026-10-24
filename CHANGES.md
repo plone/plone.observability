@@ -2,6 +2,44 @@
 
 <!-- towncrier release notes start -->
 
+## 1.2.0 (2026-10-24)
+
+### New features:
+
+- Add `plone_zodb_connections_idle`, the idle connections waiting in the pool, and
+  `plone_zodb_pool_size`, the `pool-size` setting. Connections in use are
+  `plone_zodb_connections - plone_zodb_connections_idle`. ([#80](https://github.com/plone/plone.observability/issues/80))
+- Add `plone_process_rss_peak_bytes`, the peak resident set size of the process.
+  On macOS the value is now correctly in bytes (`ru_maxrss` is not in KiB there). ([#81](https://github.com/plone/plone.observability/issues/81))
+
+### Bug fixes:
+
+- Run the readiness checks single-flight: `/ready` and `/startup` share one run at
+  a time, and probes that arrive during a run answer at once with the last result,
+  or with 503 once the run counts as stuck. Before, every probe got its own thread
+  and opened a ZODB connection, so a blocking `db.open()` (e.g. during a database
+  failover) piled up probe threads without limit; in production that kept a short
+  failover from ever recovering. Results are cached for
+  `PLONE_OBSERVABILITY_READINESS_CACHE_TTL` seconds (default 2), and a run counts
+  as stuck after `PLONE_OBSERVABILITY_READINESS_STUCK_AFTER` seconds (default 10). ([#79](https://github.com/plone/plone.observability/issues/79))
+- `plone_zodb_connections` now reports the number of open ZODB connections, in use
+  or idle in the pool. It used to report the `pool-size` setting, so it was
+  constant and the same on every instance. ([#80](https://github.com/plone/plone.observability/issues/80))
+- `plone_process_rss_bytes` now reports the current resident set size, read from
+  `/proc/self/statm`. It used to report `ru_maxrss`, the peak, so it never went
+  down when memory was freed. On platforms without `/proc` the metric is left out
+  instead of reporting the peak under this name.
+  `plone_zodb_cache_size_bytes` now reports the estimated size of the object
+  caches, summed over all connections. It used to report the configured
+  `cache-size-bytes` limit, which is 0 unless set. ([#81](https://github.com/plone/plone.observability/issues/81))
+
+### Documentation:
+
+- Add `plone.registryfromenviron` to the ecosystem dashboard under *Tools &
+  Libraries*: it overrides `plone.registry` values from environment variables.
+  The dashboard is duplicated in zodb-pgjsonb, and both copies got the same card.
+
+
 ## 1.1.0 (2026-09-18)
 
 ### New features:
