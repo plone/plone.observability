@@ -33,7 +33,9 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_request_errors` | counter | instance | HTTP errors by status code |
 | `plone_zodb_object_count` | gauge | global | Total objects in ZODB |
 | `plone_zodb_db_size_bytes` | gauge | global | ZODB file size |
-| `plone_zodb_connections` | gauge | instance | Open ZODB connections |
+| `plone_zodb_connections` | gauge | instance | Open ZODB connections, in use or idle in the pool |
+| `plone_zodb_connections_idle` | gauge | instance | Idle ZODB connections waiting in the pool |
+| `plone_zodb_pool_size` | gauge | instance | Configured ZODB connection pool size (`pool-size` setting) |
 | `plone_zodb_cache_size` | gauge | instance | Objects in the ZODB object cache |
 | `plone_zodb_cache_size_bytes` | gauge | instance | Estimated size of the ZODB object caches in bytes, summed over all connections |
 | `plone_zodb_loads_total` | counter | instance | Cumulative objects loaded from storage |

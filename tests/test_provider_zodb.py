@@ -20,7 +20,10 @@ def _clear_global_gauge_cache():
 
 
 class FakePool:
+    # 3 known connections, 1 of them idle; pool-size setting 7
     size = 7
+    all = frozenset({"c1", "c2", "c3"})
+    available = ((0.0, "c3"),)
 
 
 class FakeStorage:
@@ -105,8 +108,46 @@ class TestZODBMetricProvider:
         provider = ZODBMetricProvider(FakeApp())
         metrics = {m.name: m for m in provider.collect()}
         assert "plone_zodb_connections" in metrics
-        assert metrics["plone_zodb_connections"].value == 7
+        assert metrics["plone_zodb_connections"].value == 3
         assert metrics["plone_zodb_connections"].scope == "instance"
+
+    def test_collects_idle_connections(self):
+        provider = ZODBMetricProvider(FakeApp())
+        metrics = {m.name: m for m in provider.collect()}
+        assert metrics["plone_zodb_connections_idle"].value == 1
+        assert metrics["plone_zodb_connections_idle"].scope == "instance"
+
+    def test_collects_pool_size_setting(self):
+        """#80: the pool-size setting used to be reported as the connection
+        count; it now has its own gauge."""
+        provider = ZODBMetricProvider(FakeApp())
+        metrics = {m.name: m for m in provider.collect()}
+        assert metrics["plone_zodb_pool_size"].value == 7
+        assert metrics["plone_zodb_pool_size"].scope == "instance"
+
+    def test_connection_gauges_follow_a_real_pool(self, monkeypatch):
+        # keep the process-wide load/store monitor off this throwaway DB
+        monkeypatch.setenv("PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR", "0")
+        db = ZODB.DB(None, pool_size=5)
+        conn1 = db.open()
+        conn2 = db.open()
+        try:
+            root = conn1.root()
+
+            def gauges():
+                metrics = {m.name: m for m in ZODBMetricProvider(root).collect()}
+                return (
+                    metrics["plone_zodb_connections"].value,
+                    metrics["plone_zodb_connections_idle"].value,
+                    metrics["plone_zodb_pool_size"].value,
+                )
+
+            assert gauges() == (2, 0, 5)
+            conn2.close()
+            assert gauges() == (2, 1, 5)
+        finally:
+            conn1.close()
+            db.close()
 
     def test_collects_cache_metrics(self):
         provider = ZODBMetricProvider(FakeApp())

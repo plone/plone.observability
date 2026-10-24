@@ -171,13 +171,34 @@ class ZODBMetricProvider:
             labels=labels,
         )
 
-        # Instance-specific metrics
+        # Instance-specific metrics. The pool gauges read len() without taking
+        # DB._lock: that lock is on the request path (DB.open, connection
+        # close), and a scrape must never queue behind it or block it.
+        pool = db.pool
         yield Metric(
             name="plone_zodb_connections",
-            value=db.pool.size,
+            value=len(pool.all),
             type="gauge",
             scope="instance",
-            help="Number of open ZODB connections in the pool",
+            help="Number of open ZODB connections, in use or idle in the pool",
+            labels=labels,
+        )
+
+        yield Metric(
+            name="plone_zodb_connections_idle",
+            value=len(pool.available),
+            type="gauge",
+            scope="instance",
+            help="Number of idle ZODB connections waiting in the pool",
+            labels=labels,
+        )
+
+        yield Metric(
+            name="plone_zodb_pool_size",
+            value=pool.size,
+            type="gauge",
+            scope="instance",
+            help="Configured ZODB connection pool size (pool-size setting)",
             labels=labels,
         )
 
