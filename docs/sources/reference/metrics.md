@@ -23,7 +23,8 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_uptime_seconds` | gauge | instance | Process uptime |
 | `plone_info` | info | instance | Python, Zope, and Plone version labels |
 | `plone_threads_active` | gauge | instance | Active Python threads |
-| `plone_process_rss_bytes` | gauge | instance | Resident set size |
+| `plone_process_rss_bytes` | gauge | instance | Current resident set size, from `/proc/self/statm` (Linux only) |
+| `plone_process_rss_peak_bytes` | gauge | instance | Peak resident set size since process start |
 | `plone_process_cpu_seconds` | counter | instance | Total CPU time (user + system) |
 | `plone_requests_total` | counter | instance | Total HTTP requests served |
 | `plone_request_duration_seconds_sum` | counter | instance | Cumulative request duration |
@@ -34,7 +35,7 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_zodb_db_size_bytes` | gauge | global | ZODB file size |
 | `plone_zodb_connections` | gauge | instance | Open ZODB connections |
 | `plone_zodb_cache_size` | gauge | instance | Objects in the ZODB object cache |
-| `plone_zodb_cache_size_bytes` | gauge | instance | ZODB object cache size in bytes |
+| `plone_zodb_cache_size_bytes` | gauge | instance | Estimated size of the ZODB object caches in bytes, summed over all connections |
 | `plone_zodb_loads_total` | counter | instance | Cumulative objects loaded from storage |
 | `plone_zodb_stores_total` | counter | instance | Cumulative objects stored to storage |
 | `plone_zodb_conflicts_total` | counter | instance | ZODB conflict errors during publish, by `retry` outcome |

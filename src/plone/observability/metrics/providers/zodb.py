@@ -52,6 +52,23 @@ def _expensive_global_gauges(db, db_name):
     return value
 
 
+def _cache_estimated_bytes(db):
+    """Sum the estimated pickle sizes held in all connection caches.
+
+    ``db.getCacheSizeBytes()`` is the configured limit (0 when unset), not the
+    actual size. The pickle cache tracks ``total_estimated_size`` regardless of
+    any limit. ZODB offers no public sum, so we walk the connections the same
+    way ``db.cacheSize()`` does.
+    """
+    total = [0]
+
+    def add(conn):
+        total[0] += getattr(conn._cache, "total_estimated_size", 0)
+
+    db._connectionMap(add)
+    return total[0]
+
+
 class LoadStoreActivityMonitor:
     """Minimal ZODB activity monitor: cumulative load/store totals.
 
@@ -175,10 +192,10 @@ class ZODBMetricProvider:
 
         yield Metric(
             name="plone_zodb_cache_size_bytes",
-            value=db.getCacheSizeBytes(),
+            value=_cache_estimated_bytes(db),
             type="gauge",
             scope="instance",
-            help="Size of the ZODB cache in bytes",
+            help="Estimated size of the ZODB object caches in bytes",
             labels=labels,
         )
 

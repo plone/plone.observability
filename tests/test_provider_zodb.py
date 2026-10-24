@@ -1,8 +1,11 @@
+from persistent.mapping import PersistentMapping
 from plone.observability.interfaces import IMetricProvider
 from plone.observability.metrics.providers.zodb import ZODBMetricProvider
 from zope.interface.verify import verifyObject
 
 import pytest
+import transaction
+import ZODB
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +25,16 @@ class FakePool:
 
 class FakeStorage:
     pass
+
+
+class FakeCache:
+    def __init__(self, total_estimated_size):
+        self.total_estimated_size = total_estimated_size
+
+
+class FakeConnection:
+    def __init__(self, total_estimated_size):
+        self._cache = FakeCache(total_estimated_size)
 
 
 class FakeDB:
@@ -47,6 +60,10 @@ class FakeDB:
 
     def getCacheSizeBytes(self):
         return 524288
+
+    def _connectionMap(self, f):
+        for conn in (FakeConnection(1000), FakeConnection(2500)):
+            f(conn)
 
 
 class FakeJar:
@@ -96,6 +113,37 @@ class TestZODBMetricProvider:
         metrics = {m.name: m for m in provider.collect()}
         assert "plone_zodb_cache_size" in metrics
         assert metrics["plone_zodb_cache_size"].scope == "instance"
+
+    def test_cache_size_bytes_sums_estimated_size_of_all_connections(self):
+        """#81: the gauge reported getCacheSizeBytes(), the configured limit."""
+        provider = ZODBMetricProvider(FakeApp())
+        metrics = {m.name: m for m in provider.collect()}
+        assert metrics["plone_zodb_cache_size_bytes"].value == 3500
+        assert metrics["plone_zodb_cache_size_bytes"].scope == "instance"
+
+    def test_cache_size_bytes_follows_a_real_cache(self, monkeypatch):
+        # keep the process-wide load/store monitor off this throwaway DB
+        monkeypatch.setenv("PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR", "0")
+        db = ZODB.DB(None)
+        conn = db.open()
+        try:
+            root = conn.root()
+            for i in range(50):
+                root[i] = PersistentMapping(data="x" * 1000)
+            transaction.commit()
+
+            def cache_bytes():
+                metrics = {m.name: m for m in ZODBMetricProvider(root).collect()}
+                return metrics["plone_zodb_cache_size_bytes"].value
+
+            assert db.getCacheSizeBytes() == 0  # no limit configured
+            assert cache_bytes() > 50 * 1000
+            conn.cacheMinimize()
+            assert cache_bytes() < 1000
+        finally:
+            transaction.abort()
+            conn.close()
+            db.close()
 
     def test_all_metrics_have_database_label(self):
         provider = ZODBMetricProvider(FakeApp())
