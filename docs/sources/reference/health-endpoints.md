@@ -28,6 +28,12 @@ The `/startup` latch is deliberate.
 Kubernetes does not run the readiness probe until the startup probe has succeeded, so `/startup` cannot depend on `/ready` having been polled first.
 It must stand on its own.
 
+`/ready` and `/startup` share one readiness run at a time.
+A probe that arrives while a run is in progress does not start another one and does not wait for it.
+It gets the last result, or `503` if there is no result yet or the run is older than `PLONE_OBSERVABILITY_READINESS_STUCK_AFTER`.
+Results are reused for `PLONE_OBSERVABILITY_READINESS_CACHE_TTL` seconds.
+See {doc}`/reference/configuration`.
+
 ## Response format
 
 All endpoints return JSON.
@@ -43,6 +49,16 @@ The HTTP status is `200` on success and `503` on failure.
 ```
 
 Each entry in `checks` is keyed by the check name and reports a boolean `ok` and a human-readable `message`.
+
+While a readiness run is in progress and no usable result is available, `checks` is empty and a top-level `message` says why:
+
+```json
+{
+  "status": "failed",
+  "checks": {},
+  "message": "readiness check in progress for 42s"
+}
+```
 
 ```{seealso}
 {doc}`/explanation/health-probes` explains why there are three separate probes and why the server runs on its own port.

@@ -49,6 +49,20 @@ When every Zope worker thread is busy serving slow requests, a health endpoint t
 The orchestrator would read that timeout as "process dead" and restart a process that was merely under load, throwing away in-flight work and making the overload worse.
 A dedicated thread on a dedicated port stays answerable through saturation, so the liveness signal reports what is actually true: the process is alive, just busy.
 
+## Why readiness runs one check at a time
+
+The health server answers each probe on its own thread, so a busy Zope cannot delay it.
+That alone is not enough: the readiness check opens a ZODB connection, and opening one can block, for example while the database fails over.
+The kubelet gives up on a probe after its timeout and sends the next one.
+If every probe started its own check, each would add another thread waiting for the same database, and the waiting threads would compete with the Zope workers for the same locks.
+A short outage could then turn into a process that never recovers.
+
+So readiness is single-flight.
+Only one run of the readiness checks happens at a time, in the probe thread that started it.
+Every other probe answers at once: with the last result while the run is young, and with "not ready" once it has been running too long.
+A blocked check holds exactly one thread, and the probes keep telling the truth: this process cannot serve right now.
+A short result cache means a burst of probes costs one check, not one per probe.
+
 ## Why metrics are different
 
 Metrics deliberately do the opposite.

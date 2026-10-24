@@ -15,6 +15,18 @@ Every how-to guide links here rather than repeating these values.
     Default: `8081`.
     Set to `0` to disable the health server.
 
+`PLONE_OBSERVABILITY_READINESS_CACHE_TTL`
+:   Seconds to reuse the result of a readiness run, successful or not, for `/ready` and `/startup`.
+    A burst of probes then costs one run.
+    Set to `0` to run the checks on every probe, unless a run is already in progress.
+    Default: `2`.
+
+`PLONE_OBSERVABILITY_READINESS_STUCK_AFTER`
+:   Seconds after which a readiness run that has not returned counts as stuck.
+    Until then, probes that arrive during the run get the last result.
+    After that they get `503` with a `message`, and a warning is logged once.
+    Default: `10`.
+
 ## Metrics
 
 `PLONE_OBSERVABILITY_METRICS_ALLOWLIST`

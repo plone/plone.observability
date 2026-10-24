@@ -3,9 +3,11 @@ from unittest import mock
 
 import contextlib
 import json
+import logging
 import os
 import pytest
 import socket
+import threading
 import time
 import urllib.request
 
@@ -31,6 +33,47 @@ def _registered_readiness(ok, message="x", name="test-readiness"):
         gsm.unregisterUtility(check, IReadinessCheck, name=name)
 
 
+@contextlib.contextmanager
+def _registered_check(check, name="test-readiness"):
+    """Register *check* (an IReadinessCheck instance) in the global registry."""
+    from plone.observability.interfaces import IReadinessCheck
+    from zope.component import getGlobalSiteManager
+
+    gsm = getGlobalSiteManager()
+    gsm.registerUtility(check, IReadinessCheck, name=name)
+    try:
+        yield check
+    finally:
+        gsm.unregisterUtility(check, IReadinessCheck, name=name)
+
+
+def _make_check_class():
+    from plone.observability.interfaces import IReadinessCheck
+    from zope.interface import implementer
+
+    @implementer(IReadinessCheck)
+    class ControlledCheck:
+        """Counts runs; blocks while ``gate`` is cleared."""
+
+        def __init__(self, ok=True, raises=False):
+            self.ok = ok
+            self.raises = raises
+            self.calls = 0
+            self.started = threading.Event()
+            self.gate = threading.Event()
+            self.gate.set()
+
+        def __call__(self):
+            self.calls += 1
+            self.started.set()
+            self.gate.wait(10)
+            if self.raises:
+                raise RuntimeError("boom")
+            return self.ok, "controlled"
+
+    return ControlledCheck
+
+
 def _find_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
@@ -41,6 +84,9 @@ def _find_free_port():
 def health_server():
     port = _find_free_port()
     server = HealthServer(host="127.0.0.1", port=port)
+    # These tests swap checks between requests a few ms apart, so they need
+    # every probe to run the checks. The result cache has its own tests.
+    server.readiness_cache_ttl = 0
     server.start()
     # Wait for server to be ready
     for _ in range(50):
@@ -176,3 +222,154 @@ def test_start_is_non_fatal_on_bind_error(monkeypatch):
     hs = HealthServer(port=8099)
     hs.start()  # must not raise
     assert hs._httpd is None
+
+
+class TestSingleFlightReadiness:
+    """#79: one readiness run at a time, probes never wait for it."""
+
+    def _server(self, ttl=0, stuck_after=10):
+        server = HealthServer(host="127.0.0.1", port=0)
+        server.readiness_cache_ttl = ttl
+        server.readiness_stuck_after = stuck_after
+        return server
+
+    def _run_in_thread(self, server):
+        results = []
+        thread = threading.Thread(
+            target=lambda: results.append(server.check_readiness()), daemon=True
+        )
+        thread.start()
+        return thread, results
+
+    def test_settings_from_env(self):
+        env = {
+            "PLONE_OBSERVABILITY_READINESS_CACHE_TTL": "0.5",
+            "PLONE_OBSERVABILITY_READINESS_STUCK_AFTER": "30",
+        }
+        with mock.patch.dict(os.environ, env):
+            server = HealthServer(port=0)
+        assert server.readiness_cache_ttl == 0.5
+        assert server.readiness_stuck_after == 30
+
+    def test_defaults(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("PLONE_OBSERVABILITY_READINESS_CACHE_TTL", None)
+            os.environ.pop("PLONE_OBSERVABILITY_READINESS_STUCK_AFTER", None)
+            server = HealthServer(port=0)
+        assert server.readiness_cache_ttl == 2
+        assert server.readiness_stuck_after == 10
+
+    def test_concurrent_probes_run_the_check_once(self):
+        server = self._server()
+        with _registered_check(_make_check_class()()) as check:
+            check.gate.clear()
+            thread, results = self._run_in_thread(server)
+            assert check.started.wait(5)
+
+            # no previous result: every other probe gets an immediate 503
+            for _ in range(5):
+                ok, checks, message = server.check_readiness()
+                assert ok is False
+                assert "in progress" in message
+
+            check.gate.set()
+            thread.join(5)
+        assert check.calls == 1
+        assert results[0][0] is True
+
+    def test_returns_last_result_while_a_fresh_run_is_in_progress(self):
+        server = self._server()
+        with _registered_check(_make_check_class()()) as check:
+            assert server.check_readiness()[0] is True
+
+            check.gate.clear()
+            check.started.clear()
+            thread, _ = self._run_in_thread(server)
+            assert check.started.wait(5)
+
+            ok, checks, message = server.check_readiness()
+            assert ok is True
+            assert checks["test-readiness"]["ok"] is True
+            assert message is None
+
+            check.gate.set()
+            thread.join(5)
+        assert check.calls == 2
+
+    def test_stuck_run_answers_503_and_warns_once(self, caplog):
+        server = self._server(stuck_after=0.05)
+        with _registered_check(_make_check_class()()) as check:
+            assert server.check_readiness()[0] is True
+
+            check.gate.clear()
+            check.started.clear()
+            thread, _ = self._run_in_thread(server)
+            assert check.started.wait(5)
+            time.sleep(0.1)
+
+            with caplog.at_level(logging.WARNING):
+                first = server.check_readiness()
+                second = server.check_readiness()
+
+            check.gate.set()
+            thread.join(5)
+        for ok, checks, message in (first, second):
+            assert ok is False
+            assert checks == {}
+            assert "in progress for" in message
+        stuck = [r for r in caplog.records if "running for" in r.getMessage()]
+        assert len(stuck) == 1
+        assert check.calls == 2
+
+    def test_result_is_cached_for_ttl(self):
+        server = self._server(ttl=60)
+        with _registered_check(_make_check_class()()) as check:
+            assert server.check_readiness()[0] is True
+            assert server.check_readiness()[0] is True
+            assert check.calls == 1
+
+            server.readiness_cache_ttl = 0
+            server.check_readiness()
+            assert check.calls == 2
+
+    def test_failures_are_cached_too(self):
+        server = self._server(ttl=60)
+        with _registered_check(_make_check_class()(ok=False)) as check:
+            assert server.check_readiness()[0] is False
+            assert server.check_readiness()[0] is False
+        assert check.calls == 1
+
+    def test_raising_check_releases_the_flight(self):
+        server = self._server()
+        with _registered_check(_make_check_class()(raises=True)) as check:
+            with pytest.raises(RuntimeError):
+                server.check_readiness()
+            check.raises = False
+            assert server.check_readiness()[0] is True
+        assert check.calls == 2
+
+    def test_http_probes_do_not_wait_for_a_blocked_check(self, health_server):
+        """/ready and /startup share the flight and answer within the
+        kubelet timeout while a check hangs."""
+        server, port = health_server
+        with _registered_check(_make_check_class()()) as check:
+            check.gate.clear()
+            thread = threading.Thread(
+                target=lambda: urllib.request.urlopen(
+                    f"http://127.0.0.1:{port}/ready", timeout=10
+                ),
+                daemon=True,
+            )
+            thread.start()
+            assert check.started.wait(5)
+
+            for path in ("/ready", "/startup", "/ready"):
+                with pytest.raises(urllib.error.HTTPError) as exc:
+                    urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=1)
+                assert exc.value.code == 503
+            body = json.loads(exc.value.read())
+            assert "in progress" in body["message"]
+
+            check.gate.set()
+            thread.join(5)
+        assert check.calls == 1

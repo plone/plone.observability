@@ -10,9 +10,22 @@ import logging
 import os
 import sys
 import threading
+import time
 
 
 logger = logging.getLogger(__name__)
+
+
+def run_checks(interface):
+    """Run all checks registered for *interface*; return ``(ok, checks)``."""
+    checks = {}
+    ok = True
+    for name, check in getUtilitiesFor(interface):
+        check_ok, message = check()
+        checks[name] = {"ok": check_ok, "message": message}
+        if not check_ok:
+            ok = False
+    return ok, checks
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -44,29 +57,21 @@ class HealthRequestHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
-    def _run_checks(self, interface):
-        checks = {}
-        ok = True
-        for name, check in getUtilitiesFor(interface):
-            check_ok, message = check()
-            checks[name] = {"ok": check_ok, "message": message}
-            if not check_ok:
-                ok = False
-        return ok, checks
-
     def _handle_live(self):
-        ok, checks = self._run_checks(ILivenessCheck)
+        ok, checks = run_checks(ILivenessCheck)
         self._send_json(
             200 if ok else 503, {"status": "ok" if ok else "failed", "checks": checks}
         )
 
     def _handle_ready(self):
-        ok, checks = self._run_checks(IReadinessCheck)
+        hs = self.server.health_server
+        ok, checks, message = hs.check_readiness()
         if ok:
-            self.server.health_server._started = True
-        self._send_json(
-            200 if ok else 503, {"status": "ok" if ok else "failed", "checks": checks}
-        )
+            hs._started = True
+        data = {"status": "ok" if ok else "failed", "checks": checks}
+        if message is not None:
+            data["message"] = message
+        self._send_json(200 if ok else 503, data)
 
     def _handle_startup(self):
         # Determine readiness ourselves and latch on first success. Kubernetes
@@ -76,7 +81,7 @@ class HealthRequestHandler(BaseHTTPRequestHandler):
         # green (startup semantics: "did the process finish booting").
         hs = self.server.health_server
         if not hs._started:
-            ok, _ = self._run_checks(IReadinessCheck)
+            ok, _, _ = hs.check_readiness()
             if ok:
                 hs._started = True
         started = hs._started
@@ -115,6 +120,71 @@ class HealthServer:
         self._thread = None
         self._httpd = None
         self.db = None  # Set during startup to hold ZODB Database reference
+
+        # Readiness runs single-flight with a short result cache, see
+        # check_readiness().
+        self.readiness_cache_ttl = float(
+            os.environ.get("PLONE_OBSERVABILITY_READINESS_CACHE_TTL", "2")
+        )
+        self.readiness_stuck_after = float(
+            os.environ.get("PLONE_OBSERVABILITY_READINESS_STUCK_AFTER", "10")
+        )
+        self._readiness_lock = threading.Lock()
+        self._readiness_result = None  # (ok, checks) of the last completed run
+        self._readiness_result_at = 0.0
+        self._readiness_running_since = None
+        self._readiness_stuck_warned = False
+
+    def check_readiness(self):
+        """Run the readiness checks, at most one run at a time.
+
+        Return ``(ok, checks, message)``. Every probe gets its own server
+        thread, and a readiness check may block (``db.open()`` during a
+        database failover). Without single-flight, each probe the kubelet
+        sends after its timeout adds another blocked thread, and the crowd
+        keeps a struggling process from recovering.
+
+        So the run happens in the probe thread that starts it, while every
+        other probe answers at once: from the cached result within
+        ``readiness_cache_ttl``, from the last result while the run is younger
+        than ``readiness_stuck_after``, else with a failure saying the check
+        is still in progress.
+        """
+        with self._readiness_lock:
+            now = time.monotonic()
+            last = self._readiness_result
+            if (
+                last is not None
+                and now - self._readiness_result_at < self.readiness_cache_ttl
+            ):
+                return (*last, None)
+            running_since = self._readiness_running_since
+            if running_since is not None:
+                age = now - running_since
+                if age < self.readiness_stuck_after:
+                    if last is not None:
+                        return (*last, None)
+                elif not self._readiness_stuck_warned:
+                    logger.warning(
+                        "Readiness check has been running for %.0fs; "
+                        "answering probes as not ready until it returns",
+                        age,
+                    )
+                    self._readiness_stuck_warned = True
+                return False, {}, f"readiness check in progress for {age:.0f}s"
+            self._readiness_running_since = now
+            self._readiness_stuck_warned = False
+
+        result = None
+        try:
+            result = run_checks(IReadinessCheck)
+        finally:
+            with self._readiness_lock:
+                self._readiness_running_since = None
+                if result is not None:
+                    self._readiness_result = result
+                    self._readiness_result_at = time.monotonic()
+        return (*result, None)
 
     def start(self):
         if self.port == 0:
