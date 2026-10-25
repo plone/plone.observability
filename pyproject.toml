@@ -27,7 +27,6 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "OFS",
     "plone.base",
     "Products.CMFCore",
     "Zope",
