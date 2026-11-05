@@ -5,10 +5,18 @@ from zope.interface.verify import verifyObject
 import os
 import pytest
 import resource
+import types
 
 
 class FakeApp:
     pass
+
+
+def _fix_rusage(monkeypatch, ru_maxrss):
+    """Pin getrusage(): the peak RSS can grow between the provider's call and
+    a second one in the test, so comparing against a live read is racy."""
+    usage = types.SimpleNamespace(ru_maxrss=ru_maxrss, ru_utime=1.0, ru_stime=0.5)
+    monkeypatch.setattr(resource, "getrusage", lambda who: usage)
 
 
 class TestSystemMetricProvider:
@@ -61,18 +69,18 @@ class TestSystemMetricProvider:
         from plone.observability.metrics.providers import system
 
         monkeypatch.setattr(system.sys, "platform", "linux")
+        _fix_rusage(monkeypatch, ru_maxrss=144760)
         metrics = {m.name: m for m in SystemMetricProvider(FakeApp()).collect()}
-        maxrss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        assert metrics["plone_process_rss_peak_bytes"].value == maxrss * 1024
+        assert metrics["plone_process_rss_peak_bytes"].value == 144760 * 1024
         assert metrics["plone_process_rss_peak_bytes"].type == "gauge"
 
     def test_rss_peak_is_ru_maxrss_in_bytes_on_macos(self, monkeypatch):
         from plone.observability.metrics.providers import system
 
         monkeypatch.setattr(system.sys, "platform", "darwin")
+        _fix_rusage(monkeypatch, ru_maxrss=148234240)
         metrics = {m.name: m for m in SystemMetricProvider(FakeApp()).collect()}
-        maxrss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        assert metrics["plone_process_rss_peak_bytes"].value == maxrss
+        assert metrics["plone_process_rss_peak_bytes"].value == 148234240
 
     @pytest.mark.skipif(
         not os.path.exists("/proc/self/statm"), reason="needs /proc/self/statm"

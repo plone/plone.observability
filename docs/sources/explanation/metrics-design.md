@@ -31,11 +31,13 @@ The `scope` label exists so that whoever writes the PromQL can tell the two apar
 ## Why some metrics are cached
 
 Most metrics are cheap: read a counter, read a gauge, done.
-Two are not.
-The database-wide object count and the database size, and the content catalog counts, are full-table operations on a Postgres-backed storage.
-Running them on every scrape—every fifteen or thirty seconds, forever—would put a steady, pointless load on the database.
+A few are not.
+The database-wide object count and the database size are full-table operations on a Postgres-backed storage.
+The content counts walk the catalog indexes of every Plone site.
+Running them on every scrape, every fifteen or thirty seconds, forever, would put a steady, pointless load on the database.
 
-Those two metrics sit behind a short time-to-live cache instead, sixty seconds by default, tunable with `PLONE_OBSERVABILITY_METRICS_CACHE_TTL`.
+These metrics sit behind a short time-to-live cache instead, sixty seconds by default, tunable with `PLONE_OBSERVABILITY_METRICS_CACHE_TTL`.
+The cache lives at module level, keyed by database name or site id, because `@@metrics` builds its providers afresh on every scrape.
 The numbers move slowly enough that a minute of staleness is invisible, and the database is spared the repeated full scans.
 
 ## The ZODB activity monitor
