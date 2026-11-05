@@ -72,8 +72,13 @@ Scrape it from a single Prometheus target: multiple concurrent scrapers would ea
 
 ## Catalog backends
 
-`plone_content_total` and `plone_content_by_state` are produced from the ZCatalog index API and are therefore ZCatalog-only.
-On other catalog backends, such as plone-pgcatalog, the generic provider yields nothing, and the backend package ships its own `IMetricProvider` with the same metric names.
+`plone_content_total` and `plone_content_by_state` come from the `content` provider, which reads the `portal_type` and `review_state` indexes through the ZCatalog index API, one Plone site at a time.
+
+A catalog backend that keeps its data outside the site cannot rely on that.
+If it emulates the index API, the generic provider still emits, but the counts may cover more than one site.
+plone-pgcatalog is such a backend: one PostgreSQL table holds all sites, so the generic provider would report the database-wide counts under every site's label.
+Such a backend replaces the `content` adapter with its own provider in `overrides.zcml`, keeping the metric names, and plone-pgcatalog does exactly that.
+See {doc}`/how-to/add-custom-metric-provider` for how to replace a built-in provider.
 
 ```{seealso}
 {doc}`/how-to/scrape-with-prometheus` shows scrape configuration and PromQL recipes.

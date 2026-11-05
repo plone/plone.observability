@@ -3,6 +3,19 @@ from plone.observability.metrics.providers.content import ContentMetricProvider
 from unittest import mock
 from zope.interface.verify import verifyObject
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _clear_site_cache():
+    """The content metrics are cached at module level per site id, and all
+    fake sites here are called ``Plone``; clear the cache around each test."""
+    from plone.observability.metrics.providers import content
+
+    content._site_cache.clear()
+    yield
+    content._site_cache.clear()
+
 
 class FakeIndex:
     def __init__(self, values):
@@ -164,20 +177,72 @@ class TestContentProviderCoverage:
 
         assert _find_plone_sites(App()) == [site]
 
-    def test_collect_uses_cache_on_second_call(self):
-        from plone.observability.metrics.providers.content import ContentMetricProvider
+    def test_collect_uses_cache_across_provider_instances(self, monkeypatch):
+        # @@metrics builds a fresh adapter per scrape, so the cache must
+        # outlive the provider instance.
+        from plone.observability.metrics.providers import content
 
-        provider = ContentMetricProvider(object())
+        catalog = FakeCatalog([("Document", 3)], [("published", 3)])
+        index = catalog.Indexes["portal_type"]
         calls = {"n": 0}
+        unique_values = index.uniqueValues
 
-        def fresh():
+        def counting(withLengths=False):
             calls["n"] += 1
-            return iter([])
+            return unique_values(withLengths=withLengths)
 
-        provider._collect_fresh = fresh
-        list(provider.collect())
-        list(provider.collect())
-        assert calls["n"] == 1  # second call served from cache
+        index.uniqueValues = counting
+        site = FakeSite(catalog)
+        monkeypatch.setattr(content, "_find_plone_sites", lambda app: [site])
+        first = list(content.ContentMetricProvider(object()).collect())
+        second = list(content.ContentMetricProvider(object()).collect())
+        assert calls["n"] == 1  # second scrape served from cache
+        assert second == first
+
+    def test_collect_refreshes_after_ttl(self, monkeypatch):
+        from plone.observability.metrics.providers import content
+
+        monkeypatch.setenv("PLONE_OBSERVABILITY_METRICS_CACHE_TTL", "0")
+        values = [("Document", 3)]
+        site = FakeSite(FakeCatalog(values, []))
+        monkeypatch.setattr(content, "_find_plone_sites", lambda app: [site])
+        list(content.ContentMetricProvider(object()).collect())
+        values[0] = ("Document", 4)
+        metrics = list(content.ContentMetricProvider(object()).collect())
+        assert [m.value for m in metrics] == [4]
+
+    def test_sites_are_cached_independently(self, monkeypatch):
+        from plone.observability.metrics.providers import content
+
+        one = FakeSite(FakeCatalog([("Document", 1)], []))
+        one.id = "one"
+        two = FakeSite(FakeCatalog([("Document", 2)], []))
+        two.id = "two"
+        sites = [one]
+        monkeypatch.setattr(content, "_find_plone_sites", lambda app: list(sites))
+        list(content.ContentMetricProvider(object()).collect())
+        # A site added within the TTL window shows up on the next scrape.
+        sites.append(two)
+        metrics = list(content.ContentMetricProvider(object()).collect())
+        assert {(m.labels["site"], m.value) for m in metrics} == {
+            ("one", 1),
+            ("two", 2),
+        }
+
+    def test_removed_site_is_evicted(self, monkeypatch):
+        from plone.observability.metrics.providers import content
+
+        one = FakeSite(FakeCatalog([("Document", 1)], []))
+        one.id = "one"
+        two = FakeSite(FakeCatalog([("Document", 2)], []))
+        two.id = "two"
+        sites = [one, two]
+        monkeypatch.setattr(content, "_find_plone_sites", lambda app: list(sites))
+        list(content.ContentMetricProvider(object()).collect())
+        sites.remove(two)
+        metrics = list(content.ContentMetricProvider(object()).collect())
+        assert {m.labels["site"] for m in metrics} == {"one"}
+        assert set(content._site_cache) == {"one"}
 
     def test_skips_site_without_catalog(self, monkeypatch):
         from plone.observability.metrics.providers import content

@@ -44,6 +44,25 @@ class MyMetricProvider:
 
 The next scrape of `@@metrics` includes the yielded metrics.
 
+## Replace a built-in provider
+
+Providers are named adapters, so registering an adapter under the name of a built-in provider replaces it.
+Register it in your package's `overrides.zcml`, where it wins over the built-in registration instead of conflicting with it.
+Plone loads that file for add-ons registered through `z3c.autoinclude` with target `plone`; otherwise include it with `includeOverrides`.
+
+
+```xml
+<adapter
+    factory=".metrics.MyContentMetricProvider"
+    provides="plone.observability.interfaces.IMetricProvider"
+    for="OFS.interfaces.IApplication"
+    name="content"
+    />
+```
+
+Keep the metric names and labels of the provider you replace, so dashboards and alerts keep working.
+A catalog backend that does not store its data per site replaces the `content` provider this way; see {doc}`/reference/metrics` for the details.
+
 ## Keep labels low-cardinality
 
 Do not put unbounded values, such as a user id or a full URL, into metric names or labels.
