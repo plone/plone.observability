@@ -63,6 +63,28 @@ Every other probe answers at once: with the last result while the run is young, 
 A blocked check holds exactly one thread, and the probes keep telling the truth: this process cannot serve right now.
 A short result cache means a burst of probes costs one check, not one per probe.
 
+## Why readiness borrows a pool connection
+
+The ZODB check opens a connection with `db.open()`, reads the root object, and closes it again.
+That is the same path every request takes, including the lock the database holds while it hands out connections.
+A check that only asked the storage would be cheaper, but it would stay green while requests pile up on that lock, which is exactly the situation a readiness probe has to catch.
+
+The price shows up in the log when the instance is busy.
+If every worker thread holds a connection when the probe runs, `db.open()` creates one beyond `pool-size`, and ZODB warns:
+
+```text
+WARNING [ZODB.DB:158] DB.open() has 4 open connections with a pool_size of 3
+```
+
+The warning is harmless.
+ZODB keeps idle connections sorted by the size of their object cache and discards the smallest one when the pool is over its size.
+That is the probe's connection, which holds next to nothing, so the warm caches of the worker threads survive.
+What the warning does tell you is that all worker connections were busy at that moment; `plone_zodb_connections_idle` shows the same saturation over time.
+
+To silence it, set `pool-size` one higher than the number of worker threads.
+The probe then has a slot of its own.
+That extra connection can warm up over time when the workers use it, so budget memory for one more object cache.
+
 ## Why metrics are different
 
 Metrics deliberately do the opposite.
