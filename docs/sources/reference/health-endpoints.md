@@ -34,6 +34,10 @@ It gets the last result, or `503` if there is no result yet or the run is older 
 Results are reused for `PLONE_OBSERVABILITY_READINESS_CACHE_TTL` seconds.
 See {doc}`/reference/configuration`.
 
+The ZODB check borrows a connection from the ZODB connection pool.
+When all worker threads hold one, ZODB logs `DB.open() has N open connections with a pool_size of M`; this is harmless.
+See {doc}`/explanation/health-probes` for why, and how to avoid the warning.
+
 ## Response format
 
 All endpoints return JSON.

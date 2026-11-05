@@ -1,6 +1,10 @@
+from persistent.mapping import PersistentMapping
 from plone.observability.health.checks import ZODBReadinessCheck
 from plone.observability.interfaces import IReadinessCheck
 from zope.interface.verify import verifyObject
+
+import transaction
+import ZODB
 
 
 class FakeConnection:
@@ -59,3 +63,50 @@ class TestZODBReadinessCheck:
         check.db = FakeDB(connection=conn)
         check()
         assert conn.closed is True
+
+
+class TestReadinessProbeOnSaturatedPool:
+    """Pins the ZODB pool behaviour the check relies on (#92): the pool keeps
+    idle connections sorted by cache size and discards the smallest, so a
+    probe that overflows a saturated pool never evicts a warm worker cache."""
+
+    def test_probe_does_not_evict_warm_caches(self):
+        db = ZODB.DB(None, pool_size=3)
+        try:
+            conn = db.open()
+            root = conn.root()
+            for i in range(100):
+                root[i] = PersistentMapping(v=i)
+            transaction.commit()
+            conn.close()
+
+            # Three busy workers, each with a warm cache.
+            workers = [
+                db.open(transaction_manager=transaction.TransactionManager())
+                for _ in range(3)
+            ]
+            for worker in workers:
+                worker_root = worker.root()
+                for i in range(100):
+                    worker_root[i]["v"]
+            warm = {id(worker) for worker in workers}
+
+            class WorkerFinishesDuringProbe:
+                # A worker returns its connection while the probe holds the
+                # fourth one, so the probe's is not the oldest idle connection.
+                def open(self):
+                    conn = db.open()
+                    workers[0].close()
+                    return conn
+
+            check = ZODBReadinessCheck()
+            check.db = WorkerFinishesDuringProbe()
+            ok, _ = check()
+            assert ok is True
+
+            for worker in workers[1:]:
+                worker.close()
+            assert {id(c) for c in db.pool.all} == warm
+            assert all(c._cache.cache_non_ghost_count > 100 for c in db.pool.all)
+        finally:
+            db.close()

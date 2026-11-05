@@ -9,7 +9,17 @@ logger = logging.getLogger(__name__)
 
 @implementer(IReadinessCheck)
 class ZODBReadinessCheck:
-    """Verifies that the ZODB is accessible by opening a connection and reading the root."""
+    """Verifies that the ZODB is accessible by opening a connection and reading the root.
+
+    The check deliberately goes through ``db.open()``, the path every request
+    takes, including ``DB._lock``. A check against the storage alone would
+    report ready while requests hang on that lock (zodb-pgjsonb#126).
+
+    When all worker connections are busy, ``db.open()`` creates one beyond
+    ``pool-size`` and ZODB logs "DB.open() has N open connections". That is
+    harmless: the pool discards the connection with the smallest cache, which
+    is the probe's, so warm worker caches survive (#92).
+    """
 
     name = "zodb"
 
