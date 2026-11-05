@@ -60,7 +60,7 @@ jobs:
           print("version ->", re.search(r'(?m)^version = .*', text).group(0))
           PY
 
-      - uses: hynek/build-and-inspect-python-package@v3.0.1
+      - uses: hynek/build-and-inspect-python-package@v3.0.2
 
   release-test-pypi:
     name: Publish in-dev package to test.pypi.org
