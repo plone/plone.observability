@@ -1,3 +1,7 @@
+---
+description: "Health probes, a Prometheus and JSON metrics endpoint, and optional OpenTelemetry tracing for Plone 6.2 running in containers."
+---
+
 # plone.observability
 
 <!-- diataxis: landing -->

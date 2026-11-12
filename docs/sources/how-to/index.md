@@ -1,3 +1,7 @@
+---
+description: "Task-focused guides to install plone.observability, wire probes, scrape metrics, enable tracing, and extend it."
+---
+
 # How-to guides
 
 Task-focused guides for getting a specific result.

@@ -98,5 +98,5 @@ They have opposite requirements, so they live in opposite places.
 ```{seealso}
 - {doc}`/reference/health-endpoints` for the exact endpoints and response format.
 - {doc}`/how-to/configure-kubernetes-probes` to wire these probes into a deployment.
-- The introduction on the Plone community forum: <https://community.plone.org/t/plone-observability-health-probes-and-metrics-for-running-plone-in-containers>
+- The introduction on the Plone community forum: <https://community.plone.org/t/plone-observability-health-probes-and-metrics-for-running-plone-in-containers/23081>
 ```
