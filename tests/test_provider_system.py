@@ -65,6 +65,41 @@ class TestSystemMetricProvider:
         assert "plone_process_rss_bytes" not in names
         assert "plone_process_rss_peak_bytes" in names
 
+    def test_rss_split_reads_anon_and_file_from_status(self, tmp_path, monkeypatch):
+        from plone.observability.metrics.providers import system
+
+        status = tmp_path / "status"
+        status.write_text(
+            "Name:\tpython\n"
+            "VmRSS:\t  300 kB\n"
+            "RssAnon:\t  200 kB\n"
+            "RssFile:\t   90 kB\n"
+            "RssShmem:\t   10 kB\n"
+        )
+        monkeypatch.setattr(system, "_STATUS", str(status))
+        metrics = {m.name: m for m in SystemMetricProvider(FakeApp()).collect()}
+        assert metrics["plone_process_rss_anon_bytes"].value == 200 * 1024
+        assert metrics["plone_process_rss_file_bytes"].value == 90 * 1024
+        assert metrics["plone_process_rss_anon_bytes"].type == "gauge"
+
+    def test_rss_split_omitted_without_status(self, tmp_path, monkeypatch):
+        from plone.observability.metrics.providers import system
+
+        monkeypatch.setattr(system, "_STATUS", str(tmp_path / "missing"))
+        names = [m.name for m in SystemMetricProvider(FakeApp()).collect()]
+        assert "plone_process_rss_anon_bytes" not in names
+        assert "plone_process_rss_file_bytes" not in names
+
+    def test_rss_split_omitted_when_fields_missing(self, tmp_path, monkeypatch):
+        # Kernels before 4.5 have VmRSS but no RssAnon/RssFile.
+        from plone.observability.metrics.providers import system
+
+        status = tmp_path / "status"
+        status.write_text("Name:\tpython\nVmRSS:\t  300 kB\n")
+        monkeypatch.setattr(system, "_STATUS", str(status))
+        names = [m.name for m in SystemMetricProvider(FakeApp()).collect()]
+        assert "plone_process_rss_anon_bytes" not in names
+
     def test_rss_peak_is_ru_maxrss_in_kib_on_linux(self, monkeypatch):
         from plone.observability.metrics.providers import system
 

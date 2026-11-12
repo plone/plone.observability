@@ -25,7 +25,19 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_threads_active` | gauge | instance | Active Python threads |
 | `plone_process_rss_bytes` | gauge | instance | Current resident set size, from `/proc/self/statm` (Linux only) |
 | `plone_process_rss_peak_bytes` | gauge | instance | Peak resident set size since process start |
+| `plone_process_rss_anon_bytes` | gauge | instance | Resident anonymous memory, such as the heap and thread stacks, from `/proc/self/status` (Linux only) |
+| `plone_process_rss_file_bytes` | gauge | instance | Resident memory of mapped files, such as shared libraries, from `/proc/self/status` (Linux only) |
 | `plone_process_cpu_seconds` | counter | instance | Total CPU time (user + system) |
+| `plone_python_allocated_blocks` | gauge | instance | Memory blocks in use by the Python object allocator (pymalloc) |
+| `plone_python_interned_strings` | gauge | instance | Number of interned strings (Python 3.12 and later) |
+| `plone_gc_collections_total` | counter | instance | Garbage collections, by `generation` |
+| `plone_gc_collected_total` | counter | instance | Objects collected by the garbage collector, by `generation` |
+| `plone_gc_uncollectable_total` | counter | instance | Uncollectable objects found by the garbage collector, by `generation` |
+| `plone_gc_pause_seconds_bucket` | counter | instance | Garbage collection pause histogram buckets, with `_sum` and `_count` |
+| `plone_malloc_inuse_bytes` | gauge | instance | Bytes in use through glibc `malloc` (opt-in) |
+| `plone_malloc_free_bytes` | gauge | instance | Bytes glibc `malloc` holds but does not use (opt-in) |
+| `plone_malloc_mmap_bytes` | gauge | instance | Bytes in large memory-mapped `malloc` allocations (opt-in) |
+| `plone_malloc_arena_bytes` | gauge | instance | Bytes of the glibc `malloc` arenas (opt-in) |
 | `plone_requests_total` | counter | instance | Total HTTP requests served |
 | `plone_request_duration_seconds_sum` | counter | instance | Cumulative request duration |
 | `plone_request_duration_seconds_bucket` | counter | instance | Request duration histogram buckets |
@@ -69,6 +81,44 @@ instance
 `plone_request_duration_seconds_max` is a per-scrape-window gauge.
 A histogram can only bound latency to its bucket edges, so the true worst-case request time is tracked directly and reset on every scrape.
 Scrape it from a single Prometheus target: multiple concurrent scrapers would each see only part of the window.
+
+## Memory metrics
+
+The memory metrics come from the `system` and `python` providers.
+Each metric is left out where its source is not available.
+
+`plone_process_rss_anon_bytes` and `plone_process_rss_file_bytes`
+:   Read from the `RssAnon` and `RssFile` fields of `/proc/self/status`.
+    They require Linux 4.5 or later.
+
+`plone_python_allocated_blocks`
+:   Read from `sys.getallocatedblocks()`.
+    The value is a number of blocks.
+    It does not convert them to bytes.
+
+`plone_python_interned_strings`
+:   Read from `sys.getunicodeinternedsize()`, which exists in Python 3.12 and later.
+    On Python 3.12, interned strings are never freed.
+    The value never decreases there.
+    From Python 3.13, it can decrease.
+
+`plone_gc_*_total`
+:   Read from `gc.get_stats()`.
+    The `generation` label is `0`, `1`, or `2`.
+    What a generation holds depends on the Python version.
+
+`plone_gc_pause_seconds`
+:   Timed by a `gc.callbacks` hook that the package installs on the first metrics scrape.
+    Pauses before the first scrape are not counted.
+    Bucket bounds range from 100 microseconds to 1 second.
+
+`plone_malloc_*`
+:   Read from glibc's `mallinfo2()`, which exists in glibc 2.33 and later.
+    They are off by default.
+    Set `PLONE_OBSERVABILITY_MALLINFO=1` to turn them on.
+    The values are cached for `PLONE_OBSERVABILITY_METRICS_CACHE_TTL` seconds.
+    They cover only memory allocated through glibc `malloc`.
+    Memory from other allocators, such as mimalloc in a Rust extension or a jemalloc loaded with `LD_PRELOAD`, does not appear in them.
 
 ## Catalog backends
 

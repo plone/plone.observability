@@ -61,6 +61,13 @@
       />
 
   <adapter
+      factory=".providers.python.PythonMetricProvider"
+      provides="plone.observability.interfaces.IMetricProvider"
+      for="OFS.interfaces.IApplication"
+      name="python"
+      />
+
+  <adapter
       factory=".providers.conflict.ConflictMetricProvider"
       provides="plone.observability.interfaces.IMetricProvider"
       for="OFS.interfaces.IApplication"
