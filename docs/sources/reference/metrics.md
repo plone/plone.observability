@@ -21,7 +21,7 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | Metric | Type | Scope | Description |
 |---|---|---|---|
 | `plone_uptime_seconds` | gauge | instance | Process uptime |
-| `plone_info` | info | instance | Python, Zope, and Plone version labels |
+| `plone_info` | gauge | instance | Python, Zope, and Plone version labels, value always `1` |
 | `plone_threads_active` | gauge | instance | Active Python threads |
 | `plone_process_rss_bytes` | gauge | instance | Current resident set size, from `/proc/self/statm` (Linux only) |
 | `plone_process_rss_peak_bytes` | gauge | instance | Peak resident set size since process start |
@@ -51,7 +51,7 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_request_errors` | counter | instance | HTTP errors by status code |
 | `plone_request_rss_growth_bytes_bucket` | counter | instance | Growth of the resident set size per request, histogram buckets with `_sum` and `_count` (opt-in) |
 | `plone_zodb_object_count` | gauge | global | Total objects in ZODB |
-| `plone_zodb_db_size_bytes` | gauge | global | ZODB file size |
+| `plone_zodb_db_size_bytes` | gauge | global | Size of the database in bytes, as reported by the storage |
 | `plone_zodb_connections` | gauge | instance | Open ZODB connections, in use or idle in the pool |
 | `plone_zodb_connections_idle` | gauge | instance | Idle ZODB connections waiting in the pool |
 | `plone_zodb_connections_alive` | gauge | instance | ZODB connections still in memory, including ones the pool has released, per database |

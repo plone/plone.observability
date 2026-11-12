@@ -167,6 +167,9 @@ Find the request counter:
 
 ```console
 $ curl --silent http://localhost:8080/@@metrics | grep plone_requests_total
+# HELP plone_requests_total Total number of HTTP requests
+# TYPE plone_requests_total counter
+plone_requests_total{scope="instance",auth="authenticated"} 0
 plone_requests_total{scope="instance",auth="anonymous"} 2
 ```
 

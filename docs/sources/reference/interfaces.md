@@ -86,12 +86,19 @@ The value object yielded by metric providers.
 * - `value`
   - The numeric value.
 * - `type`
-  - The metric type: `gauge`, `counter`, or `info`.
+  - The metric type: `gauge` or `counter`.
 * - `scope`
   - `"instance"` or `"global"`.
 * - `help`
   - A human-readable description.
+* - `labels`
+  - A dictionary of label names and values. Default: empty.
 ```
+
+The Prometheus text format has no `info` type.
+A metric with `type="info"` makes Prometheus reject the whole scrape.
+Report version or build information as a `gauge` with the value `1` and the details in `labels`, as `plone_info` does.
+A histogram is reported as counters named `<name>_bucket` with an `le` label, `<name>_sum`, and `<name>_count`.
 
 Import it from `plone.observability.metric`.
 

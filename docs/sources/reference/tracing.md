@@ -15,19 +15,28 @@ The environment variables are listed in {doc}`/reference/configuration`.
 | Span | Emitted | Key attributes |
 |---|---|---|
 | root request span | per request, from the WSGI filter | standard HTTP attributes |
-| `ZPublisher.publish` | once per request | `http.route`, `enduser.authenticated`, and `enduser.id` when enabled |
+| `ZPublisher.publish` | once per request | `http.route`, `plone.published` (class name of the published object), `enduser.authenticated`, and `enduser.id` when enabled |
 | `catalog.searchResults` | per catalog query | `plone.catalog.result_count` |
 | `catalog.unrestrictedSearchResults` | per catalog query | `plone.catalog.result_count` |
 | `transaction.commit` | per ZODB transaction completion |—|
 | `transformchain` | per response-transform phase | `plone.transformchain.transform_count` |
 | `transform.<name>` | per transform, child of `transformchain` | `plone.transform.name`, `plone.transform.handler` |
-| subrequest span | per `plone.subrequest` render, nested under the active transform span |—|
+| `subrequest <segment>` | per `plone.subrequest` render, nested under the active transform span | `http.url`, `http.method`, `http.status_code` |
+| `viewletmanager <name>` | per viewlet manager render | `plone.viewletmanager.name`, `plone.viewlet.count` |
+| `viewlet <name>` | per viewlet, child of `viewletmanager`, not for the head managers | — |
+| `portletcolumn <name>` | per portlet column render | `plone.portletmanager.name` |
+| `portlet <name>` | per portlet, child of `portletcolumn` | — |
 
+`<segment>` is the last path segment of the subrequest URL.
 The `catalog.*` spans cover both standard Plone and plone-pgcatalog.
-The `transformchain` spans are emitted only when `plone.transformchain` is installed, and the subrequest span only when `plone.subrequest` is installed.
+The `transformchain` spans are emitted only when `plone.transformchain` is installed.
+The subrequest span is emitted only when `plone.subrequest` is installed.
+The render spans can be turned off with `PLONE_OBSERVABILITY_OTEL_RENDER=0`.
+The head viewlet managers (`IHTTPHeaders`, `IHtmlHead`, `IHtmlHeadLinks`, `IScripts`) get a span but no child span per viewlet.
 
-The root request span requires the `opentelemetry` WSGI filter.
-Without it you still get the publishing, catalog, and commit spans, which are registered through ZCML, but not the outer WSGI span.
+Tracing requires the `opentelemetry` WSGI filter.
+The filter sets up the exporter, opens the root request span, and installs the catalog, commit, subrequest, and render instrumentation.
+Without it, no spans are exported.
 See {doc}`/how-to/enable-opentelemetry-tracing`.
 
 ## Per-span ZODB attributes

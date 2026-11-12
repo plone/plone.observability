@@ -28,13 +28,15 @@ export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 
 For the full set of variables and the package-specific overrides, see {doc}`/reference/configuration`.
 
-## Add the WSGI filter for the root span
+## Add the WSGI filter
 
-Add the `opentelemetry` filter to your pipeline so each request gets an outer WSGI span.
-The wiring is the same as the other filters; see {doc}`/how-to/install`.
+Add the `opentelemetry` filter to your pipeline.
+The wiring is the same as for the other filters.
+See {doc}`/how-to/install`.
 
-Without the filter you still get the publishing, catalog, and commit spans, which are registered through ZCML.
-You only lose the outer WSGI span.
+The filter is required.
+It sets up the exporter, installs the instrumentation, and opens the root span of each request.
+Without it, no spans are exported.
 
 ## Exclude noisy paths
 

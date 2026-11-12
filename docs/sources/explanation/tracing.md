@@ -1,7 +1,7 @@
 # About tracing
 
 OpenTelemetry tracing in plone.observability is optional, off unless you install the extra and point it at a collector, and deliberately built to stay out of your way.
-This page explains the design: why it is OTel-native, why the spans come from Zope events rather than monkeypatching, and how tracing relates to the metrics.
+This page explains the design: why it is OTel-native, where the spans come from, and how tracing relates to the metrics.
 
 ## OTel-native, not a parallel configuration
 
@@ -12,14 +12,21 @@ You configure them the way you would configure any OpenTelemetry-instrumented se
 The only package-specific switches are overrides: a master `PLONE_OBSERVABILITY_OTEL_ENABLED` to force tracing on or off, and a couple of toggles for the package's own defaults.
 The point is that an operator who already knows OpenTelemetry does not have to learn a Plone dialect of it.
 
-## Spans from events, not monkeypatching
+## Events where Zope has them, wrappers where it has none
 
-The interesting spans—the publish span, the catalog query spans, the transaction commit span, the transformchain spans—are created from Zope's own events and notifications.
-Nothing is monkeypatched.
+Wherever Zope announces a step, the spans come from its own events and hooks.
+The publish span follows the ZPublisher events.
+The transformchain spans follow the events of `plone.transformchain`.
+The commit span comes from a transaction synchronizer.
+Event-driven spans ride on interfaces Zope already publishes, so they keep working across Plone versions.
 
-This matters for trust and longevity.
-Instrumentation that wraps or replaces framework functions breaks quietly when the framework changes underneath it, and it can change behavior in ways that are hard to reason about.
-Event-driven spans ride on interfaces Zope already publishes, so they keep working across Plone versions and never alter the request path when tracing is off.
+Some steps announce nothing.
+Catalog tools emit no events, templates render viewlets and portlets without one, and `plone.subrequest` bypasses the publisher.
+For these, the package wraps the methods that do the work: the catalog query methods, the render methods of viewlet managers and portlet columns, the `subrequest()` function, and `Connection.setstate` for the ZODB load time.
+A wrapper breaks more easily than an event subscriber when the wrapped code changes, which is why the package uses one only where no event exists.
+
+The wrappers are installed by the `opentelemetry` WSGI filter, and only when tracing is enabled.
+With tracing off, the request path runs the original code.
 
 It also means exclusion is total.
 When a path is excluded from tracing, the package suppresses span creation at both layers—the WSGI root span and the event-driven inner spans—so an excluded path produces no spans at all, not just a missing outer span.

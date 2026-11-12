@@ -19,10 +19,11 @@ plone.observability gives an orchestrator the real signals it needs: separate li
 - Liveness, readiness, and startup probes on a separate HTTP port that stays answerable when all Zope threads are busy
 - A pluggable `@@metrics` endpoint with Prometheus text and JSON output
 - Request, ZODB, and content metrics out of the box, with low-cardinality labels
+- Memory metrics that show where a process grows: resident memory split, Python allocator, garbage collector, glibc or jemalloc allocator, and ZODB connections that outlive the pool
 - Optional OpenTelemetry tracing that honors the standard `OTEL_*` environment variables
 - Extensible via the Zope Component Architecture: custom health checks, metric providers, and formatters
 
-**Requirements:** Plone 6, Python 3.10+.
+**Requirements:** Plone 6.2, Python 3.10 or later.
 OpenTelemetry tracing is an optional extra.
 
 ## Documentation

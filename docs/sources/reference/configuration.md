@@ -73,10 +73,15 @@ Every how-to guide links here rather than repeating these values.
 ## OpenTelemetry tracing
 
 These variables apply only when the `opentelemetry` extra is installed.
-The standard `OTEL_*` variables are honored directly; the table below lists them for convenience alongside the package-specific overrides.
+The standard `OTEL_*` variables are honored directly.
+The list below names them for convenience, alongside the package-specific overrides.
 
 `OTEL_EXPORTER_OTLP_ENDPOINT`
 :   OTLP collector endpoint.
+    Setting it enables tracing.
+
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
+:   OTLP collector endpoint for spans only.
     Setting it enables tracing.
 
 `OTEL_EXPORTER_OTLP_PROTOCOL`
@@ -109,6 +114,11 @@ The standard `OTEL_*` variables are honored directly; the table below lists them
     Each activates only when both the instrumentation package (`opentelemetry-io` / `opentelemetry-db` extras) and the instrumented library are installed.
     Accepts `1` or `0`.
     Default: `0`.
+
+`PLONE_OBSERVABILITY_OTEL_RENDER`
+:   Emit the render spans for viewlet managers, viewlets, portlet columns, and portlets.
+    Accepts `1` or `0`.
+    Default: `1`.
 
 `PLONE_OBSERVABILITY_OTEL_USER_ID`
 :   Include `enduser.id` on spans.
