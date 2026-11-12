@@ -1,9 +1,9 @@
 # Get plone.observability running
 
-In this tutorial we will start a Plone backend with plone.observability wired in, watch its three health probes turn green, and read live metrics from the running process.
-Everything runs in Docker, so you do not install anything except Docker itself.
-
-By the end you will have seen, with your own eyes, the signals that an orchestrator like Kubernetes uses to manage Plone.
+In this tutorial we will start a Plone backend with plone.observability wired in.
+We will watch its three health probes turn green and read live metrics from the running process.
+Everything runs in Docker.
+You need nothing else installed.
 
 ## Before you start
 
@@ -100,9 +100,17 @@ From the same directory, run:
 docker compose up
 ```
 
-The first run downloads the Plone image and installs plone.observability, so it takes a minute or two.
+The first run downloads the Plone image and installs plone.observability.
+It takes a minute or two.
 Watch the log.
-When you see a line like `Using default configuration` followed by the Zope startup messages, Plone is ready.
+Plone is ready when you see this line:
+
+```text
+INFO [waitress] Serving on http://0.0.0.0:8080
+```
+
+Notice the line just before it, `Health server started on 0.0.0.0:8081`.
+plone.observability is wired in.
 
 Leave this terminal running and open a second one for the next steps.
 
@@ -117,7 +125,8 @@ $ curl http://localhost:8081/live
 ```
 
 A `200` response with `"status": "ok"` means the process is alive.
-Notice that `checks` is empty: liveness deliberately does not touch the database, so it stays answerable even when the database is down.
+Notice that `checks` is empty.
+Liveness does not touch the database.
 
 ## Step 4: Watch the readiness probe
 
@@ -129,7 +138,7 @@ $ curl http://localhost:8081/ready
 ```
 
 This time the response carries a `zodb` check.
-Readiness confirms that the database connection works, because a process that cannot reach its database should be pulled out of rotation, not restarted.
+Readiness confirms that the database connection works.
 
 ## Step 5: Watch the startup probe
 
@@ -139,10 +148,10 @@ $ curl http://localhost:8081/startup
 ```
 
 The startup probe reports that initialization has finished.
-Once it has turned green it stays green, which is exactly what Kubernetes needs to know that the slow boot is over.
+Once it has turned green, it stays green.
 
 All three probes answer.
-You are looking at the same signals Kubernetes reads to decide when to restart Plone, when to send it traffic, and when to stop waiting for it to boot.
+Kubernetes reads these same signals to decide when to restart Plone, when to send it traffic, and when its boot is over.
 
 ## Step 6: Read the metrics
 
@@ -174,8 +183,8 @@ plone_requests_total{scope="instance",auth="anonymous"} 2
 ```
 
 Run that same command a few more times and watch the number climb.
-Each scrape is itself an anonymous request, so the `auth="anonymous"` counter goes up every time you ask.
-You have just watched Plone measure its own traffic.
+Each scrape is itself an anonymous request.
+The `auth="anonymous"` counter goes up every time you ask.
 
 ## Step 8: Clean up
 
@@ -185,13 +194,10 @@ Back in the first terminal, stop Plone with {kbd}`Ctrl+C`, then remove the conta
 docker compose down -v
 ```
 
-## What you have done
+You have watched a real Plone report its own health and measure its own traffic.
 
-You started a real Plone backend with plone.observability wired into its WSGI pipeline.
-You saw the liveness, readiness, and startup probes answer on a dedicated port, and you read live Prometheus metrics from the running process, including a counter that moved as you watched.
-
-From here:
-
-- To run this for real in Kubernetes, follow {doc}`/how-to/configure-kubernetes-probes`.
-- To collect these metrics with a Prometheus server, follow {doc}`/how-to/scrape-with-prometheus`.
-- To understand why the probes are split the way they are, read {doc}`/explanation/health-probes`.
+```{seealso}
+- {doc}`/how-to/configure-kubernetes-probes` to run this in Kubernetes.
+- {doc}`/how-to/scrape-with-prometheus` to collect these metrics with a Prometheus server.
+- {doc}`/explanation/health-probes` for why the probes are split the way they are.
+```

@@ -137,6 +137,26 @@ The histogram records growth only.
 A negative observation would make its `_sum` decrease, and Prometheus treats that as a counter reset.
 The span attributes keep the sign.
 
+## Why the request maximum resets on every scrape
+
+A histogram bounds a latency only to its bucket edges.
+Requests of 5.5 and 9.5 seconds land in the same bucket, between 5 and 10 seconds.
+`plone_request_duration_seconds_max` therefore tracks the slowest request directly.
+Reading it resets it.
+Each scrape reports the worst request of its own window.
+Two scrapers would split the window between them.
+Each would miss the peaks the other one read.
+
+## Content counts and catalog backends
+
+The `content` provider asks each Plone site's catalog for its `portal_type` and `review_state` counts through the ZCatalog index API.
+That gives per-site numbers only when each site keeps its own catalog data.
+plone-pgcatalog keeps the data of all sites in one PostgreSQL table.
+It emulates the index API.
+The generic provider would still answer.
+Every site would then report the counts of the whole database under its own label.
+A backend like that replaces the `content` provider with one that counts per site, as plone-pgcatalog does.
+
 ## The ZODB activity monitor
 
 `plone_zodb_loads_total` and `plone_zodb_stores_total` count objects loaded from and stored to the database.

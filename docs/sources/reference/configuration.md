@@ -39,7 +39,6 @@ Every how-to guide links here rather than repeating these values.
 
 `PLONE_OBSERVABILITY_METRICS_CACHE_TTL`
 :   Seconds to cache the expensive-to-collect metrics: the content catalog counts, the database-wide ZODB gauges (`plone_zodb_object_count`, `plone_zodb_db_size_bytes`), and the `plone_malloc_*` metrics.
-    On Postgres-backed storage those two are full-table queries, so caching keeps `@@metrics` fast.
     Default: `60`.
 
 `PLONE_OBSERVABILITY_MALLINFO`

@@ -86,9 +86,10 @@ instance
 
 ## The request duration maximum
 
-`plone_request_duration_seconds_max` is a per-scrape-window gauge.
-A histogram can only bound latency to its bucket edges, so the true worst-case request time is tracked directly and reset on every scrape.
-Scrape it from a single Prometheus target: multiple concurrent scrapers would each see only part of the window.
+`plone_request_duration_seconds_max` is the longest request duration since the previous scrape.
+Each scrape resets it.
+You must scrape it from a single Prometheus target.
+With several scrapers, each one sees only part of the window.
 
 ## Memory metrics
 
@@ -168,13 +169,12 @@ That takes two collections of the oldest generation.
 
 ## Catalog backends
 
-`plone_content_total` and `plone_content_by_state` come from the `content` provider, which reads the `portal_type` and `review_state` indexes through the ZCatalog index API, one Plone site at a time.
+`plone_content_total` and `plone_content_by_state` come from the `content` provider.
+It reads the `portal_type` and `review_state` indexes of each Plone site through the ZCatalog index API.
 
-A catalog backend that keeps its data outside the site cannot rely on that.
-If it emulates the index API, the generic provider still emits, but the counts may cover more than one site.
-plone-pgcatalog is such a backend: one PostgreSQL table holds all sites, so the generic provider would report the database-wide counts under every site's label.
-Such a backend replaces the `content` adapter with its own provider in `overrides.zcml`, keeping the metric names, and plone-pgcatalog does exactly that.
-See {doc}`/how-to/add-custom-metric-provider` for how to replace a built-in provider.
+A catalog backend that does not keep its data per site must replace the `content` adapter in its `overrides.zcml` and keep the metric names.
+plone-pgcatalog does.
+See {doc}`/explanation/metrics-design` for the reason and {doc}`/how-to/add-custom-metric-provider` for how to replace a built-in provider.
 
 ```{seealso}
 {doc}`/how-to/scrape-with-prometheus` shows scrape configuration and PromQL recipes.
