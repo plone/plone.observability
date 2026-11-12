@@ -47,6 +47,7 @@ Every how-to guide links here rather than repeating these values.
     The call holds the allocator lock while it walks every free memory chunk.
     On a heap fragmented into a million free chunks, it takes about 100 milliseconds.
     Threads that allocate memory wait meanwhile.
+    When jemalloc replaces `malloc`, this setting has no effect, and the `plone_jemalloc_*` metrics are reported without it.
     Set to `1` to enable.
     Default: `0`.
 

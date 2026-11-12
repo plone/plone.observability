@@ -38,6 +38,12 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_malloc_free_bytes` | gauge | instance | Bytes glibc `malloc` holds but does not use (opt-in) |
 | `plone_malloc_mmap_bytes` | gauge | instance | Bytes in large memory-mapped `malloc` allocations (opt-in) |
 | `plone_malloc_arena_bytes` | gauge | instance | Bytes of the glibc `malloc` arenas (opt-in) |
+| `plone_jemalloc_allocated_bytes` | gauge | instance | Bytes allocated by the application through jemalloc |
+| `plone_jemalloc_active_bytes` | gauge | instance | Bytes in jemalloc pages that hold allocations |
+| `plone_jemalloc_metadata_bytes` | gauge | instance | Bytes of jemalloc metadata |
+| `plone_jemalloc_resident_bytes` | gauge | instance | Upper bound of bytes in resident jemalloc pages |
+| `plone_jemalloc_mapped_bytes` | gauge | instance | Bytes in extents mapped by jemalloc |
+| `plone_jemalloc_retained_bytes` | gauge | instance | Bytes of virtual memory jemalloc retains instead of unmapping |
 | `plone_requests_total` | counter | instance | Total HTTP requests served |
 | `plone_request_duration_seconds_sum` | counter | instance | Cumulative request duration |
 | `plone_request_duration_seconds_bucket` | counter | instance | Request duration histogram buckets |
@@ -122,6 +128,15 @@ Each metric is left out where its source is not available.
     They cover only memory allocated through glibc `malloc`.
     Memory from other allocators, such as mimalloc in a Rust extension, does not appear in them.
     When a jemalloc loaded with `LD_PRELOAD` replaces `malloc`, the metrics are left out, and a warning is logged once.
+
+`plone_jemalloc_*`
+:   Read from jemalloc's `mallctl()` when a jemalloc loaded with `LD_PRELOAD` replaces `malloc`.
+    They are on whenever jemalloc is detected, without opt-in.
+    Each scrape refreshes jemalloc's statistics by writing `epoch`, then reads `stats.allocated`, `stats.active`, `stats.metadata`, `stats.resident`, `stats.mapped`, and `stats.retained`.
+    A jemalloc built with a symbol prefix does not replace `malloc` and is not detected.
+    When the statistics cannot be read, for example in a build with `--disable-stats`, the metrics are left out, and a warning is logged once.
+    `plone_jemalloc_resident_bytes` is an upper bound.
+    jemalloc counts pages that it handed out but the application never touched as resident.
 
 ## RSS growth per request
 

@@ -118,21 +118,86 @@ def _load_mallinfo2():
 _mallinfo2 = _load_mallinfo2()
 
 
-def _detect_jemalloc():
-    """Return True if jemalloc replaces malloc in this process.
+def _load_mallctl():
+    """Return jemalloc's ``mallctl()`` if jemalloc replaces malloc, else None.
 
     A jemalloc loaded with ``LD_PRELOAD`` exports ``mallctl`` into the global
     symbol namespace. glibc's ``mallinfo2()`` still resolves then, but reports
-    zeros, because glibc no longer serves the allocations.
+    zeros, because glibc no longer serves the allocations. Only the unprefixed
+    name counts: a jemalloc built with a symbol prefix (``je_``, ``_rjem_``)
+    does not replace malloc.
     """
     try:
-        return hasattr(ctypes.CDLL(None), "mallctl")
-    except (OSError, TypeError):
-        return False
+        func = ctypes.CDLL(None).mallctl
+    except (AttributeError, OSError, TypeError):
+        return None
+    func.restype = ctypes.c_int
+    func.argtypes = [
+        ctypes.c_char_p,
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_size_t),
+        ctypes.c_void_p,
+        ctypes.c_size_t,
+    ]
+    return func
 
 
-_jemalloc_active = _detect_jemalloc()
+_mallctl = _load_mallctl()
+_jemalloc_active = _mallctl is not None
 _warned_jemalloc = False
+_warned_jemalloc_stats = False
+
+# Reading jemalloc's statistics merges its per-arena counters: 5 us with one
+# arena, 0.4 ms with 33 busy ones. Cheap enough for every scrape, so on by
+# default and not cached.
+_JEMALLOC_METRICS = (
+    (
+        "plone_jemalloc_allocated_bytes",
+        "stats.allocated",
+        "Bytes allocated by the application through jemalloc",
+    ),
+    (
+        "plone_jemalloc_active_bytes",
+        "stats.active",
+        "Bytes in jemalloc pages that hold allocations",
+    ),
+    ("plone_jemalloc_metadata_bytes", "stats.metadata", "Bytes of jemalloc metadata"),
+    (
+        "plone_jemalloc_resident_bytes",
+        "stats.resident",
+        "Upper bound of bytes in resident jemalloc pages",
+    ),
+    (
+        "plone_jemalloc_mapped_bytes",
+        "stats.mapped",
+        "Bytes in extents mapped by jemalloc",
+    ),
+    (
+        "plone_jemalloc_retained_bytes",
+        "stats.retained",
+        "Bytes of virtual memory jemalloc retains instead of unmapping",
+    ),
+)
+
+
+def _jemalloc_values():
+    """Refresh and read jemalloc's statistics, or None if that fails.
+
+    jemalloc caches its statistics until ``epoch`` is written. A build
+    without statistics answers the ``stats.*`` names with ENOENT.
+    """
+    epoch = ctypes.c_uint64(1)
+    if _mallctl(b"epoch", None, None, ctypes.byref(epoch), ctypes.sizeof(epoch)):
+        return None
+    values = {}
+    for name, key, _ in _JEMALLOC_METRICS:
+        value = ctypes.c_size_t()
+        size = ctypes.c_size_t(ctypes.sizeof(value))
+        if _mallctl(key.encode(), ctypes.byref(value), ctypes.byref(size), None, 0):
+            return None
+        values[name] = value.value
+    return values
+
 
 # mallinfo2() walks every free chunk while holding the arena lock: about
 # 100 ns per chunk, so 100 ms on a heap fragmented into a million free chunks,
@@ -181,9 +246,20 @@ def _warn_jemalloc():
         logger.warning(
             "PLONE_OBSERVABILITY_MALLINFO is set, but jemalloc replaces glibc "
             "malloc in this process; leaving out the plone_malloc_* metrics, "
-            "which would read zero"
+            "which would read zero. See the plone_jemalloc_* metrics instead"
         )
         _warned_jemalloc = True
+
+
+def _warn_jemalloc_stats():
+    global _warned_jemalloc_stats
+    if not _warned_jemalloc_stats:
+        logger.warning(
+            "jemalloc replaces malloc in this process, but its statistics "
+            "cannot be read (built with --disable-stats?); leaving out the "
+            "plone_jemalloc_* metrics"
+        )
+        _warned_jemalloc_stats = True
 
 
 @implementer(IMetricProvider)
@@ -219,6 +295,9 @@ class PythonMetricProvider:
         yield from self._gc_counters()
         yield from self._gc_pauses()
 
+        if _mallctl is not None:
+            yield from self._jemalloc()
+
         if _malloc_enabled() and _mallinfo2 is not None:
             if _jemalloc_active:
                 _warn_jemalloc()
@@ -232,6 +311,20 @@ class PythonMetricProvider:
                     scope="instance",
                     help=help_text,
                 )
+
+    def _jemalloc(self):
+        values = _jemalloc_values()
+        if values is None:
+            _warn_jemalloc_stats()
+            return
+        for name, _, help_text in _JEMALLOC_METRICS:
+            yield Metric(
+                name=name,
+                value=values[name],
+                type="gauge",
+                scope="instance",
+                help=help_text,
+            )
 
     def _gc_counters(self):
         stats = gc.get_stats()

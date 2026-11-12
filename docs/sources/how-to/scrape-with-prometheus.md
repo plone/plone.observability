@@ -124,6 +124,12 @@ With `PLONE_OBSERVABILITY_MALLINFO=1`, the share of the glibc heap that is free 
 plone_malloc_free_bytes / (plone_malloc_free_bytes + plone_malloc_inuse_bytes)
 ```
 
+With jemalloc preloaded, the share of its active pages that holds no allocation:
+
+```promql
+1 - plone_jemalloc_allocated_bytes / plone_jemalloc_active_bytes
+```
+
 ```{seealso}
 - {doc}`/reference/metrics` for the full metric list and the scope label.
 - {doc}`/explanation/metrics-design` for what global versus instance scope means, why the conflict and load counters exist, and how to read the memory metrics.
