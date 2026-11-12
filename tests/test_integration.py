@@ -154,3 +154,30 @@ class TestConflictRegistration:
             if IPubBeforeAbort in getattr(h, "required", ())
         ]
         assert conflict.on_pub_before_abort in handlers
+
+
+class TestConnectionTrackingRegistration:
+    def test_startup_subscriber_registered(self, zcml_loaded):
+        from plone.observability.metrics.providers import zodb
+        from zope.component import getGlobalSiteManager
+        from zope.processlifetime import IDatabaseOpenedWithRoot
+
+        gsm = getGlobalSiteManager()
+        handlers = [
+            h.handler
+            for h in gsm.registeredHandlers()
+            if IDatabaseOpenedWithRoot in getattr(h, "required", ())
+        ]
+        assert zodb.track_connections_on_startup in handlers
+
+    def test_startup_event_tracks_the_database(self, zcml_loaded):
+        from zope.component import handle
+        from zope.processlifetime import DatabaseOpenedWithRoot
+
+        import ZODB
+
+        db = ZODB.DB(None)
+        # Zope's notify() reaches the registry through zope.component.event;
+        # this fixture loads only the ZCML, so dispatch directly.
+        handle(DatabaseOpenedWithRoot(db))
+        assert len(db._plone_observability_alive) == 1

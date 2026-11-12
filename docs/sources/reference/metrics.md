@@ -47,6 +47,7 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_zodb_db_size_bytes` | gauge | global | ZODB file size |
 | `plone_zodb_connections` | gauge | instance | Open ZODB connections, in use or idle in the pool |
 | `plone_zodb_connections_idle` | gauge | instance | Idle ZODB connections waiting in the pool |
+| `plone_zodb_connections_alive` | gauge | instance | ZODB connections still in memory, including ones the pool has released, per database |
 | `plone_zodb_pool_size` | gauge | instance | Configured ZODB connection pool size (`pool-size` setting) |
 | `plone_zodb_cache_size` | gauge | instance | Objects in the ZODB object cache |
 | `plone_zodb_cache_size_bytes` | gauge | instance | Estimated size of the ZODB object caches in bytes, summed over all connections |
@@ -120,6 +121,21 @@ Each metric is left out where its source is not available.
     They cover only memory allocated through glibc `malloc`.
     Memory from other allocators, such as mimalloc in a Rust extension, does not appear in them.
     When a jemalloc loaded with `LD_PRELOAD` replaces `malloc`, the metrics are left out, and a warning is logged once.
+
+## Connections still in memory
+
+`plone_zodb_connections_alive` counts every ZODB connection that a database created and that is still in memory.
+It carries a `database` label and is reported for the main database and every database mounted with it.
+`plone_zodb_connections` covers only the main database's pool.
+
+The package wraps the database's connection class when Zope opens the database (`IDatabaseOpenedWithRoot`).
+A configured `connection-class` stays in effect.
+Connections that exist at that moment are counted from the pool.
+If the event did not reach the package, the first metrics scrape installs the tracking instead.
+
+The count includes historical connections, which `plone_zodb_connections` does not.
+A connection the pool has released stays counted until the garbage collector frees it.
+That takes two collections of the oldest generation.
 
 ## Catalog backends
 

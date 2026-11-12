@@ -66,6 +66,25 @@ Two leak detectors watch for specific patterns.
 `plone_gc_uncollectable_total` counts reference cycles that the garbage collector cannot free.
 `plone_gc_pause_seconds` shows how long collections stop the process, which adds directly to request latency.
 
+### Connections that outlive the pool
+
+The ZODB connection pool keeps a few connections, each with its own object cache.
+When the pool has more than it needs, it releases one and forgets it.
+Normally nothing else references that connection, and the garbage collector frees it.
+
+If something still references the released connection, it stays in memory.
+So does every object it loaded, because each object points back to its connection.
+A stored traceback is enough, since its frames hold the objects a request was working on.
+The pool no longer counts such a connection.
+`plone_zodb_connections` does not show it.
+
+`plone_zodb_connections_alive` counts every connection that is still in memory.
+Above `plone_zodb_connections`, it shows released connections that have not been freed.
+A short excess after a release is normal.
+A connection references itself.
+Only the cyclic garbage collector frees it, which can take a while on a large heap.
+A leak shows as an excess that persists for hours or keeps growing.
+
 ### Why the malloc metrics are opt-in
 
 `mallinfo2()` is the only way to read the glibc allocator's numbers, and it is not cheap.

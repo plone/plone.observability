@@ -24,6 +24,12 @@
       permission="zope.Public"
       />
 
+  <!-- Track ZODB connections from startup on, for plone_zodb_connections_alive -->
+  <subscriber
+      for="zope.processlifetime.IDatabaseOpenedWithRoot"
+      handler=".providers.zodb.track_connections_on_startup"
+      />
+
   <!-- Built-in metric providers -->
   <adapter
       factory=".providers.zope_runtime.ZopeRuntimeMetricProvider"

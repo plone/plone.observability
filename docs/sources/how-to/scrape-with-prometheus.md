@@ -104,6 +104,13 @@ Time spent in garbage collection, as a share of wall-clock time:
 rate(plone_gc_pause_seconds_sum{job="plone"}[5m])
 ```
 
+Released ZODB connections that stayed in memory for a whole hour, a sign of connections pinned by a leftover reference:
+
+```promql
+min_over_time(plone_zodb_connections_alive{database="main"}[1h])
+  - max_over_time(plone_zodb_connections{database="main"}[1h]) > 0
+```
+
 With `PLONE_OBSERVABILITY_MALLINFO=1`, the share of the glibc heap that is free but not returned to the system:
 
 ```promql
