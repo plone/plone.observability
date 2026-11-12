@@ -66,9 +66,11 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 
 ## Labels
 
-All `plone_request*` metrics carry an `auth="authenticated"` or `auth="anonymous"` label, so traffic can be split by authentication state.
+All `plone_request*` metrics carry an `auth="authenticated"` or `auth="anonymous"` label.
+This label splits traffic by authentication state.
 User identity is never a metric label.
-It appears only as a span attribute; see {doc}`/reference/configuration` for the `PLONE_OBSERVABILITY_OTEL_USER_ID` setting and {doc}`/explanation/metrics-design` for the reasoning.
+It appears only as a span attribute.
+See {doc}`/reference/configuration` for the `PLONE_OBSERVABILITY_OTEL_USER_ID` setting and {doc}`/explanation/metrics-design` for the reasoning.
 
 `plone_zodb_conflicts_total` carries `retry="true"` for a conflict that was retried and `retry="false"` for the final attempt that gave up.
 

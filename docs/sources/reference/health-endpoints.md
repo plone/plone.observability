@@ -4,7 +4,8 @@ The health server runs on a dedicated port (default `8081`) in a background daem
 It answers even when all Zope worker threads are busy.
 
 The health server is started by the `egg:plone.observability#healthserver` WSGI filter.
-It is not started on Zope process startup, so `zconsole` and script runs never touch the health port.
+It is not started on Zope process startup.
+`zconsole` and script runs never touch the health port.
 See {doc}`/how-to/install` for wiring the filter.
 
 ## Endpoints
@@ -25,7 +26,8 @@ See {doc}`/how-to/install` for wiring the filter.
     Evaluates the readiness checks itself and latches on the first success: once it turns green, it stays green.
 
 The `/startup` latch is deliberate.
-Kubernetes does not run the readiness probe until the startup probe has succeeded, so `/startup` cannot depend on `/ready` having been polled first.
+Kubernetes does not run the readiness probe until the startup probe has succeeded.
+`/startup` cannot depend on `/ready` having been polled first.
 It must stand on its own.
 
 `/ready` and `/startup` share one readiness run at a time.
@@ -35,7 +37,8 @@ Results are reused for `PLONE_OBSERVABILITY_READINESS_CACHE_TTL` seconds.
 See {doc}`/reference/configuration`.
 
 The ZODB check borrows a connection from the ZODB connection pool.
-When all worker threads hold one, ZODB logs `DB.open() has N open connections with a pool_size of M`; this is harmless.
+When all worker threads hold one, ZODB logs `DB.open() has N open connections with a pool_size of M`.
+This warning is harmless.
 See {doc}`/explanation/health-probes` for why, and how to avoid the warning.
 
 ## Response format

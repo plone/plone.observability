@@ -4,7 +4,8 @@ This guide shows you how to stitch the ingress, the HTTP cache, the Volto fronte
 
 The glue is W3C Trace Context: every hop forwards the `traceparent` request header, emits its own spans, and exports them to one shared collector.
 A hop that cannot emit spans but forwards the header stays invisible in the trace without breaking it.
-The backend needs no propagation setup at all; the WSGI middleware extracts an incoming `traceparent` automatically.
+The backend needs no propagation setup at all.
+The WSGI middleware extracts an incoming `traceparent` automatically.
 
 ## Prerequisites
 
@@ -31,21 +32,28 @@ Traefik opens the entry span for each request and forwards the `traceparent` hea
 If you run a different ingress, use its OpenTelemetry support instead: ingress-nginx has an OpenTelemetry module, and Envoy-based ingresses trace natively.
 
 Make the sampling decision here at the edge, with `sampleRate`.
-The SDKs further down sample parent-based by default, so they follow the decision of the ingress and you never get partial traces.
+The SDKs further down sample parent-based by default.
+They follow the decision of the ingress.
+You never get partial traces.
 
 ## Let Varnish pass the context through
 
-Open-source Varnish emits no spans, but it forwards request headers it does not know, so the trace survives the cache without configuration.
-If your VCL scrubs request headers, make sure `traceparent` and `tracestate` survive.
+Open-source Varnish emits no spans.
+It does forward request headers it does not know.
+The trace survives the cache without configuration.
+If your VCL (Varnish Configuration Language) scrubs request headers, keep `traceparent` and `tracestate`.
 
-A cache hit is answered without touching the backend, so it produces no downstream spans.
+Varnish answers a cache hit without touching the backend.
+A cache hit produces no downstream spans.
 The time spent in Varnish shows up as the gap between the ingress span and the first downstream span.
-If you want the hit/miss outcome on the trace, emit an `X-Cache` response header from VCL and record it on the ingress span with Traefik's `tracing.capturedResponseHeaders` option.
+To get the hit/miss outcome on the trace, emit an `X-Cache` response header from VCL.
+Record it on the ingress span with Traefik's `tracing.capturedResponseHeaders` option.
 If you need real cache spans, Varnish Enterprise ships native OpenTelemetry support.
 
 ## Trace the Volto server
 
-The Node SSR process joins the trace through the OpenTelemetry Node auto-instrumentation; Volto itself needs no code changes.
+The Node SSR (server-side rendering) process joins the trace through the OpenTelemetry Node auto-instrumentation.
+Volto itself needs no code changes.
 Add the package to your frontend:
 
 ```shell
@@ -62,25 +70,33 @@ export NODE_OPTIONS="--require @opentelemetry/auto-instrumentations-node/registe
 
 Incoming SSR requests continue the trace the ingress started, and the API requests Volto makes to the backend carry the `traceparent` onward.
 
-After hydration the browser calls `++api++` directly, so those requests start their trace at the ingress instead.
+After hydration the browser calls `++api++` directly.
+Those requests start their trace at the ingress instead.
 If you want browser-initiated traces stitched from the first click, add the OpenTelemetry web SDK with its fetch instrumentation to your frontend.
 Most deployments skip this and accept ingress-rooted traces for client-side navigation.
 
 ## The backend joins automatically
 
-plone.observability extracts the incoming `traceparent` in its WSGI middleware; beyond {doc}`/how-to/enable-opentelemetry-tracing` there is nothing to configure.
+plone.observability extracts the incoming `traceparent` in its WSGI middleware.
+Beyond {doc}`/how-to/enable-opentelemetry-tracing` there is nothing to configure.
 The publish span, and the catalog, subrequest, transform, and commit spans below it, nest under Volto's outgoing request span.
 
 ## Continue into PostgreSQL
 
-If your ZODB runs on zodb-pgjsonb, or anything else in the backend process talks to PostgreSQL through psycopg 3, enable the optional psycopg instrumentor to close the last gap with per-statement SQL spans.
+Enable the optional psycopg instrumentor if your ZODB runs on zodb-pgjsonb.
+Enable it too if anything else in the backend process talks to PostgreSQL through psycopg 3.
+The instrumentor closes the last gap with per-statement SQL spans.
 See {ref}`sql-spans-psycopg`.
 
 ## Verify the stitched trace
 
 Request an uncached page through the full chain, then open the trace in your tracing backend.
-You should see one trace: the ingress span at the root, the Volto SSR span below it, the backend's publish span below that, and catalog or SQL spans at the bottom.
-If the backend spans appear as separate traces instead, a hop dropped the `traceparent` header; header-scrubbing VCL is the usual suspect.
+You should see one trace.
+The ingress span is at the root.
+The Volto SSR span sits below it.
+The backend's publish span is below that, with catalog or SQL spans at the bottom.
+If the backend spans appear as separate traces instead, a hop dropped the `traceparent` header.
+Header-scrubbing VCL is the usual suspect.
 
 ```{seealso}
 - {doc}`/reference/tracing` for every span the backend emits and its attributes.

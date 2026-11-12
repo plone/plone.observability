@@ -52,8 +52,11 @@ The `ZPublisher.publish` span (request total), each subrequest span (per-tile de
 | `plone.zodb.load_pg_objects` | objects fetched from PostgreSQL |
 | `plone.zodb.load_pg_queries` | PostgreSQL round-trips (queries) |
 
-The last three require zodb-pgjsonb (>= 1.16.0 for `load_pg_queries`); on other storages they read as 0 (best-effort, no dependency).
-`load_pg_objects / load_pg_queries` is objects-per-round-trip: ≈ 1 signals an N+1 pattern, ≫ 1 signals well-batched loads (`load_multiple`/`prefetch`), so `prefetch` adoption is visible without a wall-time A/B.
+The last three require zodb-pgjsonb (>= 1.16.0 for `load_pg_queries`).
+On other storages they read as 0 (best-effort, no dependency).
+`load_pg_objects / load_pg_queries` is objects-per-round-trip: ≈ 1 signals an N+1 pattern.
+A ratio ≫ 1 signals well-batched loads (`load_multiple`/`prefetch`).
+The ratio makes `prefetch` adoption visible without a wall-time A/B.
 
 ## Per-span memory attributes
 

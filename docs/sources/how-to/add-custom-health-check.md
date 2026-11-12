@@ -1,7 +1,8 @@
 # How to add a custom health check
 
 This guide shows you how to add your own liveness or readiness check.
-Use a liveness check for something that proves the process itself is alive, and a readiness check for a dependency the process needs in order to serve traffic.
+Use a liveness check for something that proves the process itself is alive.
+Use a readiness check for a dependency the process needs to serve traffic.
 
 For the interface members, see {doc}`/reference/interfaces`.
 

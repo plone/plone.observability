@@ -66,7 +66,7 @@ Overall conflict rate:
 rate(plone_zodb_conflicts_total[5m])
 ```
 
-Conflicts that gave up after the final retry—the ones users actually felt:
+Conflicts that gave up after the final retry, the ones users actually felt:
 
 ```promql
 rate(plone_zodb_conflicts_total{retry="false"}[5m])

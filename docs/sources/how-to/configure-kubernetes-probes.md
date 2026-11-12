@@ -51,7 +51,9 @@ The startup probe protects it: Kubernetes runs the liveness and readiness probes
 
 Size the startup budget to your slowest realistic boot.
 With `failureThreshold: 30` and `periodSeconds: 10`, Kubernetes allows up to 300 seconds for startup before it gives up.
-Raise `failureThreshold` if your site boots more slowly; the probe latches green on first success, so a generous budget costs nothing on a fast boot.
+Raise `failureThreshold` if your site boots more slowly.
+The probe latches green on first success.
+A generous budget costs nothing on a fast boot.
 
 ```{seealso}
 - {doc}`/reference/health-endpoints` for the endpoint semantics and the `/startup` latch.

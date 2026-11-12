@@ -121,7 +121,8 @@ The list below names them for convenience, alongside the package-specific overri
 
 `PLONE_OBSERVABILITY_OTEL_USER_ID`
 :   Include `enduser.id` on spans.
-    This is personally identifiable information; it is off by default.
+    This is personally identifiable information.
+    It is off by default.
 
 ```{seealso}
 {doc}`/explanation/health-probes` explains why the health server runs on a separate port, and {doc}`/how-to/install` shows how to wire the WSGI filters that activate metrics and tracing.

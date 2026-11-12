@@ -1,7 +1,8 @@
 # How to add custom spans in your code
 
 This guide shows you how to trace your own code by opening spans from an add-on or project.
-Use it when a request spends time in code that plone.observability does not already instrument, and you want that time to show up in your traces.
+Use it when a request spends time in code that plone.observability does not already instrument.
+The helper makes that time show up in your traces.
 
 For the helper signature, see {doc}`/reference/tracing`.
 
@@ -32,12 +33,16 @@ with start_span("myaddon.rebuild_report", {"myaddon.item_count": len(items)}):
         process(item)
 ```
 
-Keep attribute values bounded in the same way you keep metric labels bounded: a count or a category is fine, an unbounded id list is not.
+Keep attribute values bounded, as you do metric labels.
+Use a count or a category.
+Do not use an unbounded list of ids.
 
 ## Add attributes or events during the span
 
-`start_span` yields the span object, so you can enrich it as the work proceeds.
-Without the `opentelemetry` extra installed the helper yields `None`, so guard any use of the yielded value.
+`start_span` yields the span object.
+You can enrich it as the work proceeds.
+Without the `opentelemetry` extra installed the helper yields `None`.
+Guard any use of the yielded value.
 
 ```python
 with start_span("myaddon.rebuild_report") as span:
@@ -48,7 +53,8 @@ with start_span("myaddon.rebuild_report") as span:
 
 ## Nest spans
 
-Spans opened inside another `start_span` block nest under it, so you can break a large operation into named phases.
+Spans opened inside another `start_span` block nest under it.
+You can break a large operation into named phases.
 
 ```python
 with start_span("myaddon.import"):

@@ -2,7 +2,8 @@
 
 plone.observability registers all of its components through the Zope Component Architecture.
 Third-party packages extend or replace any of them.
-This page describes the interfaces; {doc}`/how-to/add-custom-health-check`, {doc}`/how-to/add-custom-metric-provider`, and {doc}`/how-to/add-custom-metric-formatter` show how to register implementations.
+This page describes the interfaces.
+These pages show how to register implementations: {doc}`/how-to/add-custom-health-check`, {doc}`/how-to/add-custom-metric-provider`, and {doc}`/how-to/add-custom-metric-formatter`.
 
 ## `ILivenessCheck`
 
