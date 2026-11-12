@@ -1,6 +1,6 @@
 """TracerProvider bootstrap and activation gating for the OTel extra."""
 
-from plone.base.utils import boolean_value
+from plone.observability.utils import boolean_value
 
 import logging
 import os

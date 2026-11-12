@@ -11,12 +11,12 @@ from opentelemetry import trace
 from opentelemetry.trace import set_span_in_context
 from opentelemetry.trace import Status
 from opentelemetry.trace import StatusCode
-from plone.base.utils import boolean_value
 from plone.observability.auth import get_auth_info
 from plone.observability.otel import dbcounts
 from plone.observability.otel import exclusions
 from plone.observability.otel.provider import is_enabled
 from plone.observability.otel.provider import TRACER_NAME
+from plone.observability.utils import boolean_value
 
 import logging
 import os

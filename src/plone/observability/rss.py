@@ -6,8 +6,8 @@ concurrent requests show up in each other's readings, and a request served
 from memory the allocator already holds reads as zero growth.
 """
 
-from plone.base.utils import boolean_value
 from plone.observability.metrics.providers.system import _current_rss_bytes
+from plone.observability.utils import boolean_value
 
 import os
 

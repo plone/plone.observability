@@ -1,6 +1,6 @@
-from plone.base.utils import boolean_value
 from plone.observability.interfaces import IMetricProvider
 from plone.observability.metric import Metric
+from plone.observability.utils import boolean_value
 from zope.interface import implementer
 
 import ctypes
