@@ -7,6 +7,7 @@ import logging
 import os
 import threading
 import time
+import weakref
 
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,57 @@ def _ensure_activity_monitor(db):
         _monitor = monitor
 
 
+# Every Connection a database creates, as long as it is in memory. The pool
+# forgets a connection when it releases it; if something still references it,
+# for example a stored traceback, the connection and every object it loaded
+# stay in memory. Comparing this count with the pool shows such leaks (#94).
+# A released connection references itself, so only the cyclic GC frees it:
+# the count can stay above the pool's for a while after a release.
+_track_lock = threading.Lock()
+
+
+def _snapshot(connections):
+    # Another thread can add to a pool while we copy it; just copy again.
+    while True:
+        try:
+            return list(connections)
+        except RuntimeError:
+            continue
+
+
+def _track_database(db):
+    if not hasattr(db, "klass"):
+        return
+    with _track_lock:
+        if hasattr(db, "_plone_observability_alive"):
+            return
+        alive = weakref.WeakSet()
+        klass = db.klass  # may be zope.conf's connection-class
+
+        def tracking_klass(*args, **kwargs):
+            conn = klass(*args, **kwargs)
+            alive.add(conn)
+            return conn
+
+        # Wrap first, then seed: a connection created in between is in the
+        # pool and gets added twice, which a set tolerates.
+        db.klass = tracking_klass
+        db._plone_observability_alive = alive
+        alive.update(_snapshot(db.pool.all))
+        alive.update(_snapshot(db.historical_pool))
+
+
+def track_connections(db):
+    """Track the connections of *db* and of every database mounted with it."""
+    for database in list(getattr(db, "databases", {}).values()) or [db]:
+        _track_database(database)
+
+
+def track_connections_on_startup(event):
+    """IDatabaseOpenedWithRoot subscriber: track before requests arrive."""
+    track_connections(event.database)
+
+
 @implementer(IMetricProvider)
 class ZODBMetricProvider:
     """Provides ZODB database metrics."""
@@ -219,6 +271,25 @@ class ZODBMetricProvider:
             help="Estimated size of the ZODB object caches in bytes",
             labels=labels,
         )
+
+        # Connections still in memory, per database. Installed at startup;
+        # the call here covers processes started without the subscriber.
+        track_connections(db)
+        for database in list(getattr(db, "databases", {}).values()) or [db]:
+            alive = getattr(database, "_plone_observability_alive", None)
+            if alive is None:
+                continue
+            yield Metric(
+                name="plone_zodb_connections_alive",
+                value=len(alive),
+                type="gauge",
+                scope="instance",
+                help=(
+                    "ZODB connections still in memory, including ones the pool "
+                    "has released"
+                ),
+                labels={"database": getattr(database, "database_name", db_name)},
+            )
 
         # Load/store activity (storage-agnostic, via our activity monitor)
         _ensure_activity_monitor(db)
