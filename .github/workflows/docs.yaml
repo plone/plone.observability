@@ -7,6 +7,10 @@ on:
     paths:
       - "docs/**"
       - ".github/workflows/docs.yaml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yaml"
   release:
     types: [published]
   workflow_dispatch:
@@ -17,7 +21,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -40,15 +44,21 @@ jobs:
             myst_parser sphinxcontrib.mermaid shibuya \
             sphinx-design sphinx-copybutton
 
+      - name: Check prose
+        working-directory: docs
+        run: find sources -name '*.md' -print0 | xargs -0 bash check-prose.sh
+
       - name: Build documentation
         working-directory: docs
-        run: .venv/bin/sphinx-build sources html
+        run: .venv/bin/sphinx-build -W --keep-going sources html
 
-      - uses: actions/upload-pages-artifact@v5
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
         with:
           path: docs/html
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
