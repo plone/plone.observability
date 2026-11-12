@@ -1,7 +1,8 @@
 # About metrics and cardinality
 
 The metrics endpoint is small on the surface and opinionated underneath.
-This page explains the choices that shape what it measures and how: label cardinality, metric scope, the cache in front of the expensive metrics, and the two ZODB monitors.
+This page explains the choices that shape what it measures and how.
+It covers label cardinality, metric scope, the cache in front of the expensive metrics, the memory metrics, and the two ZODB monitors.
 
 ## Why user identity is never a label
 
@@ -39,6 +40,49 @@ Running them on every scrape, every fifteen or thirty seconds, forever, would pu
 These metrics sit behind a short time-to-live cache instead, sixty seconds by default, tunable with `PLONE_OBSERVABILITY_METRICS_CACHE_TTL`.
 The cache lives at module level, keyed by database name or site id, because `@@metrics` builds its providers afresh on every scrape.
 The numbers move slowly enough that a minute of staleness is invisible, and the database is spared the repeated full scans.
+
+## Where memory grows
+
+`plone_process_rss_bytes` tells you that a process grows.
+It does not tell you where.
+Finding out used to mean inspecting the heap of a live process, which is slow and risky.
+It was also only possible after someone noticed the growth.
+The memory metrics split the resident memory into parts that point at different causes, cheaply enough to collect on every scrape.
+
+`plone_process_rss_anon_bytes` is the memory the process allocated itself.
+`plone_process_rss_file_bytes` is the resident part of mapped files, mostly shared libraries.
+Growth almost always shows up in the anonymous part.
+
+Inside the anonymous part, Python serves small objects from its own allocator.
+`plone_python_allocated_blocks` counts them.
+Growth there means more Python objects are alive: a cache that does not evict, or objects pinned by a reference nobody expected.
+Larger objects and most C extensions allocate through `malloc`, which `plone_malloc_inuse_bytes` measures.
+`plone_malloc_free_bytes` is memory that `malloc` has taken from the system but does not use.
+When it grows while the memory in use stays flat, the heap is fragmented.
+The process is not leaking.
+
+Two leak detectors watch for specific patterns.
+`plone_python_interned_strings` grows when code keeps creating new identifiers, for example a template that is compiled again on every request.
+`plone_gc_uncollectable_total` counts reference cycles that the garbage collector cannot free.
+`plone_gc_pause_seconds` shows how long collections stop the process, which adds directly to request latency.
+
+### Why the malloc metrics are opt-in
+
+`mallinfo2()` is the only way to read the glibc allocator's numbers, and it is not cheap.
+It walks every free memory chunk while holding the allocator lock.
+On a heap fragmented into a million free chunks, a call takes about 100 milliseconds.
+Threads that need memory wait for it.
+The cost grows with fragmentation, the very condition the metric is meant to show.
+The package therefore collects these metrics only when you set `PLONE_OBSERVABILITY_MALLINFO=1`.
+It caches them like the other expensive metrics.
+
+They also have a blind spot.
+They cover only glibc `malloc`.
+A Rust extension may use its own allocator, such as mimalloc.
+The anonymous memory that no other metric accounts for is then the part these allocators hold.
+A jemalloc loaded with `LD_PRELOAD` replaces `malloc` entirely.
+glibc then reports zero for everything, which looks plausible and is wrong.
+The package detects jemalloc and leaves the malloc metrics out instead.
 
 ## The ZODB activity monitor
 

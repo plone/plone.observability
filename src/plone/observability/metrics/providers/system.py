@@ -8,6 +8,7 @@ import sys
 
 
 _STATM = "/proc/self/statm"
+_STATUS = "/proc/self/status"
 
 
 def _current_rss_bytes():
@@ -21,6 +22,27 @@ def _current_rss_bytes():
     except (OSError, IndexError, ValueError):
         return None
     return resident_pages * os.sysconf("SC_PAGE_SIZE")
+
+
+def _rss_split_bytes():
+    """Return ``(anon, file)`` resident bytes, or None without the fields.
+
+    ``RssAnon`` is the heap and other anonymous memory, ``RssFile`` the
+    resident parts of mapped files such as shared libraries. Both are in
+    ``/proc/self/status`` since Linux 4.5, in kB.
+    """
+    fields = {}
+    try:
+        with open(_STATUS) as f:
+            for line in f:
+                key, _, rest = line.partition(":")
+                if key in ("RssAnon", "RssFile"):
+                    fields[key] = int(rest.split()[0]) * 1024
+    except (OSError, IndexError, ValueError):
+        return None
+    if len(fields) != 2:
+        return None
+    return fields["RssAnon"], fields["RssFile"]
 
 
 @implementer(IMetricProvider)
@@ -47,6 +69,24 @@ class SystemMetricProvider:
                 type="gauge",
                 scope="instance",
                 help="Current resident set size of the process in bytes",
+            )
+
+        rss_split = _rss_split_bytes()
+        if rss_split is not None:
+            anon_bytes, file_bytes = rss_split
+            yield Metric(
+                name="plone_process_rss_anon_bytes",
+                value=anon_bytes,
+                type="gauge",
+                scope="instance",
+                help="Resident anonymous memory (heap, stacks) of the process in bytes",
+            )
+            yield Metric(
+                name="plone_process_rss_file_bytes",
+                value=file_bytes,
+                type="gauge",
+                scope="instance",
+                help="Resident memory of mapped files of the process in bytes",
             )
 
         # ru_maxrss is the peak RSS: in bytes on macOS, in KiB elsewhere.

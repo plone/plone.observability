@@ -78,7 +78,39 @@ A loads-per-request smell test that catches views waking up too many objects:
 rate(plone_zodb_loads_total[5m]) / rate(plone_requests_total[5m])
 ```
 
+## Find where memory grows
+
+Growth of the anonymous memory, the part that leaks, over six hours:
+
+```promql
+delta(plone_process_rss_anon_bytes{job="plone"}[6h])
+```
+
+Growth of live Python objects over the same window:
+
+```promql
+delta(plone_python_allocated_blocks{job="plone"}[6h])
+```
+
+Interned strings that keep growing point at code that is compiled again and again:
+
+```promql
+deriv(plone_python_interned_strings{job="plone"}[1h]) > 0
+```
+
+Time spent in garbage collection, as a share of wall-clock time:
+
+```promql
+rate(plone_gc_pause_seconds_sum{job="plone"}[5m])
+```
+
+With `PLONE_OBSERVABILITY_MALLINFO=1`, the share of the glibc heap that is free but not returned to the system:
+
+```promql
+plone_malloc_free_bytes / (plone_malloc_free_bytes + plone_malloc_inuse_bytes)
+```
+
 ```{seealso}
 - {doc}`/reference/metrics` for the full metric list and the scope label.
-- {doc}`/explanation/metrics-design` for what global versus instance scope means and why the conflict and load counters exist.
+- {doc}`/explanation/metrics-design` for what global versus instance scope means, why the conflict and load counters exist, and how to read the memory metrics.
 ```

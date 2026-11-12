@@ -38,9 +38,17 @@ Every how-to guide links here rather than repeating these values.
     Default: `127.0.0.1,::1`.
 
 `PLONE_OBSERVABILITY_METRICS_CACHE_TTL`
-:   Seconds to cache the expensive-to-collect metrics: the content catalog counts and the database-wide ZODB gauges (`plone_zodb_object_count`, `plone_zodb_db_size_bytes`).
+:   Seconds to cache the expensive-to-collect metrics: the content catalog counts, the database-wide ZODB gauges (`plone_zodb_object_count`, `plone_zodb_db_size_bytes`), and the `plone_malloc_*` metrics.
     On Postgres-backed storage those two are full-table queries, so caching keeps `@@metrics` fast.
     Default: `60`.
+
+`PLONE_OBSERVABILITY_MALLINFO`
+:   Collect the `plone_malloc_*` metrics from glibc's `mallinfo2()`.
+    The call holds the allocator lock while it walks every free memory chunk.
+    On a heap fragmented into a million free chunks, it takes about 100 milliseconds.
+    Threads that allocate memory wait meanwhile.
+    Set to `1` to enable.
+    Default: `0`.
 
 `PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR`
 :   Install a minimal ZODB activity monitor for the load and store counters.

@@ -106,3 +106,12 @@ Cloudbrine
 [Bb]oolean
 [Ff]ormatter[s]?
 [Hh]otspot[s]?
+
+# Memory allocators
+[Aa]llocator[s]?
+glibc
+jemalloc
+malloc
+mimalloc
+pymalloc
+[Uu]ncollectable
