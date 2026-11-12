@@ -1,3 +1,7 @@
+---
+description: "Design decisions behind the health probes, the metrics, and the tracing of plone.observability."
+---
+
 # Explanation
 
 Background and design reasoning.

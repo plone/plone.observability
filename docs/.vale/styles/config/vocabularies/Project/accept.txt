@@ -99,6 +99,11 @@ env
 zconsole
 llms
 healthserver
+Traefik
+kubelet
+botocore
+httpx
+psycopg
 
 # Spelling acceptances
 Cloudbrine
@@ -106,6 +111,15 @@ Cloudbrine
 [Bb]oolean
 [Ff]ormatter[s]?
 [Hh]otspot[s]?
+[Ii]nstrumentor[s]?
+[Mm]iddleware
+[Nn]amespace[s]?
+[Pp]reloaded
+[Tt]raceback[s]?
+[Ss]torages
+[Uu]ncached
+[Uu]nmapping
+SDKs
 
 # Memory allocators
 [Aa]llocator[s]?

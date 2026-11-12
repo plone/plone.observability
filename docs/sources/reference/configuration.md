@@ -4,6 +4,8 @@ All configuration is done through environment variables.
 This page is the canonical list.
 Every how-to guide links here rather than repeating these values.
 
+(configuration-health-server)=
+
 ## Health server
 
 `PLONE_OBSERVABILITY_HEALTH_HOST`
@@ -27,6 +29,8 @@ Every how-to guide links here rather than repeating these values.
     After that they get `503` with a `message`, and a warning is logged once.
     Default: `10`.
 
+(configuration-metrics)=
+
 ## Metrics
 
 `PLONE_OBSERVABILITY_METRICS_ALLOWLIST`
@@ -39,7 +43,6 @@ Every how-to guide links here rather than repeating these values.
 
 `PLONE_OBSERVABILITY_METRICS_CACHE_TTL`
 :   Seconds to cache the expensive-to-collect metrics: the content catalog counts, the database-wide ZODB gauges (`plone_zodb_object_count`, `plone_zodb_db_size_bytes`), and the `plone_malloc_*` metrics.
-    On Postgres-backed storage those two are full-table queries, so caching keeps `@@metrics` fast.
     Default: `60`.
 
 `PLONE_OBSERVABILITY_MALLINFO`
@@ -70,13 +73,20 @@ Every how-to guide links here rather than repeating these values.
     Set to `0` to disable.
     Default: `1`.
 
+(configuration-opentelemetry-tracing)=
+
 ## OpenTelemetry tracing
 
 These variables apply only when the `opentelemetry` extra is installed.
-The standard `OTEL_*` variables are honored directly; the table below lists them for convenience alongside the package-specific overrides.
+The standard `OTEL_*` variables are honored directly.
+The list below names them for convenience, alongside the package-specific overrides.
 
 `OTEL_EXPORTER_OTLP_ENDPOINT`
 :   OTLP collector endpoint.
+    Setting it enables tracing.
+
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
+:   OTLP collector endpoint for spans only.
     Setting it enables tracing.
 
 `OTEL_EXPORTER_OTLP_PROTOCOL`
@@ -110,9 +120,15 @@ The standard `OTEL_*` variables are honored directly; the table below lists them
     Accepts `1` or `0`.
     Default: `0`.
 
+`PLONE_OBSERVABILITY_OTEL_RENDER`
+:   Emit the render spans for viewlet managers, viewlets, portlet columns, and portlets.
+    Accepts `1` or `0`.
+    Default: `1`.
+
 `PLONE_OBSERVABILITY_OTEL_USER_ID`
 :   Include `enduser.id` on spans.
-    This is personally identifiable information; it is off by default.
+    This is personally identifiable information.
+    It is off by default.
 
 ```{seealso}
 {doc}`/explanation/health-probes` explains why the health server runs on a separate port, and {doc}`/how-to/install` shows how to wire the WSGI filters that activate metrics and tracing.

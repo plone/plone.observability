@@ -11,10 +11,13 @@ observability
 :   Populates the request metrics (`plone_requests_total`, `plone_request_duration_seconds_*`).
 
 opentelemetry
-:   Emits the OpenTelemetry root request span.
+:   Sets up OpenTelemetry tracing and emits the root request span.
+    Tracing does not work without it.
     Add it only if you use the tracing extra.
 
 Without the filters the package is loaded but inert: the health server never starts and request metrics stay empty.
+
+(install-add-the-dependency)=
 
 ## Add the dependency
 
@@ -27,11 +30,14 @@ dependencies = [
 ]
 ```
 
-Then include its ZCML.
+Plone loads the package's ZCML automatically through `z3c.autoinclude`.
+On a plain Zope instance without Plone, include it yourself:
 
 ```xml
 <include package="plone.observability" />
 ```
+
+(install-wire-the-filters)=
 
 ## Wire the filters
 
@@ -65,19 +71,29 @@ Add the filters to the pipeline and declare them as PasteDeploy filters:
 ```ini
 [pipeline:main]
 pipeline =
+    egg:Zope#httpexceptions
     healthserver
-    egg:plone.observability#observability
-    Zope
+    observability
+    opentelemetry
+    zope
 
 [filter:healthserver]
 use = egg:plone.observability#healthserver
 
 [filter:observability]
 use = egg:plone.observability#observability
+
+[filter:opentelemetry]
+use = egg:plone.observability#opentelemetry
 ```
+
+Keep the names in `pipeline` and the `[filter:*]` sections in sync with your existing `zope.ini`.
+Leave out `opentelemetry` and its section if you do not use the tracing extra.
 ````
 
 `````
+
+(install-verify)=
 
 ## Verify
 
@@ -85,14 +101,14 @@ Start the instance and check the health port.
 
 ```console
 $ curl http://localhost:8081/live
-{"status": "ok", "checks": {"process": {"ok": true, "message": "process alive"}}}
+{"status": "ok", "checks": {}}
 ```
 
 Then open the metrics endpoint.
 
 ```console
 $ curl http://localhost:8080/@@metrics
-# HELP plone_uptime_seconds Process uptime
+# HELP plone_uptime_seconds Process uptime in seconds
 # TYPE plone_uptime_seconds gauge
 plone_uptime_seconds{scope="instance"} 42.0
 ```

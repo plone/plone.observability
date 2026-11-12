@@ -5,6 +5,8 @@ This guide shows you how to scrape the `@@metrics` endpoint with Prometheus and 
 It assumes the `observability` filter is wired.
 See {doc}`/how-to/install`.
 
+(scrape-with-prometheus-add-a-scrape-job)=
+
 ## Add a scrape job
 
 Point Prometheus at the main Zope port with the `@@metrics` path.
@@ -19,6 +21,8 @@ scrape_configs:
 
 If you restrict access with `PLONE_OBSERVABILITY_METRICS_ALLOWLIST`, add the Prometheus server's CIDR to the allowlist.
 See {doc}`/reference/configuration`.
+
+(scrape-with-prometheus-query-the-metrics)=
 
 ## Query the metrics
 
@@ -48,6 +52,8 @@ Memory per instance in megabytes:
 plone_process_rss_bytes{job="plone"} / 1024 / 1024
 ```
 
+(scrape-with-prometheus-read-global-metrics-from-one-instance)=
+
 ## Read global metrics from one instance
 
 Global metrics report the same value on every instance that shares the ZODB.
@@ -58,6 +64,8 @@ Query a single instance instead:
 plone_zodb_object_count{instance="plone-0:8080", scope="global"}
 ```
 
+(scrape-with-prometheus-watch-zodb-contention)=
+
 ## Watch ZODB contention
 
 Overall conflict rate:
@@ -66,7 +74,7 @@ Overall conflict rate:
 rate(plone_zodb_conflicts_total[5m])
 ```
 
-Conflicts that gave up after the final retry—the ones users actually felt:
+Conflicts that gave up after the final retry, the ones users actually felt:
 
 ```promql
 rate(plone_zodb_conflicts_total{retry="false"}[5m])
@@ -77,6 +85,8 @@ A loads-per-request smell test that catches views waking up too many objects:
 ```promql
 rate(plone_zodb_loads_total[5m]) / rate(plone_requests_total[5m])
 ```
+
+(scrape-with-prometheus-find-where-memory-grows)=
 
 ## Find where memory grows
 

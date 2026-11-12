@@ -46,8 +46,11 @@ mermaid_output_format = "raw"
 
 html_theme = "shibuya"
 
+html_baseurl = "https://plone.github.io/plone.observability/"
+
 html_theme_options = {
     "logo_target": "/plone.observability/",
+    "og_image_url": "https://plone.github.io/plone.observability/_static/og-image.png",
     "accent_color": "cyan",
     "color_mode": "dark",
     "dark_code": True,

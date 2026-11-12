@@ -1,9 +1,12 @@
 # How to add a custom health check
 
 This guide shows you how to add your own liveness or readiness check.
-Use a liveness check for something that proves the process itself is alive, and a readiness check for a dependency the process needs in order to serve traffic.
+Use a liveness check for something that proves the process itself is alive.
+Use a readiness check for a dependency the process needs to serve traffic.
 
 For the interface members, see {doc}`/reference/interfaces`.
+
+(add-custom-health-check-add-a-liveness-check)=
 
 ## Add a liveness check
 
@@ -30,6 +33,8 @@ class MyLivenessCheck:
     name="myapp"
     />
 ```
+
+(add-custom-health-check-add-a-readiness-check)=
 
 ## Add a readiness check
 
@@ -60,7 +65,8 @@ class MyReadinessCheck:
 
 The check name appears under `checks` in the probe response, keyed by the `name` attribute.
 
-Readiness checks run together, one run at a time, and the result is reused for a short time.
+Readiness checks run together, one run at a time.
+The result is reused for a short time.
 A check does not need its own locking or caching against concurrent probes.
 It should still return within a few seconds: while a run is stuck, the pod reports not ready.
 See {doc}`/explanation/health-probes`.

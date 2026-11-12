@@ -1,3 +1,7 @@
+---
+description: "Learning-oriented lessons that get plone.observability running and show its probes and metrics."
+---
+
 # Tutorials
 
 Learning-oriented lessons that build your skills by doing.

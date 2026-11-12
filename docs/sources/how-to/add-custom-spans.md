@@ -1,9 +1,12 @@
 # How to add custom spans in your code
 
 This guide shows you how to trace your own code by opening spans from an add-on or project.
-Use it when a request spends time in code that plone.observability does not already instrument, and you want that time to show up in your traces.
+Use it when a request spends time in code that plone.observability does not already instrument.
+The helper makes that time show up in your traces.
 
 For the helper signature, see {doc}`/reference/tracing`.
+
+(add-custom-spans-open-a-span-around-your-code)=
 
 ## Open a span around your code
 
@@ -22,6 +25,8 @@ def rebuild_report(items):
 The span nests automatically under whatever span is currently active, usually the `ZPublisher.publish` span for the request.
 It appears in your trace backend as a child, with its own start time and duration.
 
+(add-custom-spans-attach-attributes)=
+
 ## Attach attributes
 
 Pass a dictionary of attributes to record context alongside the span.
@@ -32,12 +37,18 @@ with start_span("myaddon.rebuild_report", {"myaddon.item_count": len(items)}):
         process(item)
 ```
 
-Keep attribute values bounded in the same way you keep metric labels bounded: a count or a category is fine, an unbounded id list is not.
+Keep attribute values bounded, as you do metric labels.
+Use a count or a category.
+Do not use an unbounded list of ids.
+
+(add-custom-spans-add-attributes-or-events-during-the-span)=
 
 ## Add attributes or events during the span
 
-`start_span` yields the span object, so you can enrich it as the work proceeds.
-Without the `opentelemetry` extra installed the helper yields `None`, so guard any use of the yielded value.
+`start_span` yields the span object.
+You can enrich it as the work proceeds.
+Without the `opentelemetry` extra installed the helper yields `None`.
+Guard any use of the yielded value.
 
 ```python
 with start_span("myaddon.rebuild_report") as span:
@@ -46,9 +57,12 @@ with start_span("myaddon.rebuild_report") as span:
         span.set_attribute("myaddon.rows_written", result.rows)
 ```
 
+(add-custom-spans-nest-spans)=
+
 ## Nest spans
 
-Spans opened inside another `start_span` block nest under it, so you can break a large operation into named phases.
+Spans opened inside another `start_span` block nest under it.
+You can break a large operation into named phases.
 
 ```python
 with start_span("myaddon.import"):
@@ -58,10 +72,13 @@ with start_span("myaddon.import"):
         store(data)
 ```
 
+(add-custom-spans-leave-it-in-production-code)=
+
 ## Leave it in production code
 
 `start_span` is dependency-optional: when the `opentelemetry` extra is not installed it is a no-op context manager that yields `None`.
-You can call it unconditionally in shipped code without adding a hard dependency on OpenTelemetry, and it costs nothing when tracing is off.
+You can call it unconditionally in shipped code without adding a hard dependency on OpenTelemetry.
+It costs nothing when tracing is off.
 
 Name your spans with a stable, low-cardinality prefix such as your add-on name, for example `myaddon.import.store`.
 Never put ids or other unbounded values in the span name.

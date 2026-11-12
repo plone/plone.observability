@@ -6,6 +6,8 @@ It collects metrics from all registered `IMetricProvider` adapters and serialize
 Request metrics require the `observability` WSGI filter in your pipeline.
 See {doc}`/how-to/install`.
 
+(metrics-endpoint)=
+
 ## Endpoint
 
 ```text
@@ -16,12 +18,14 @@ http://your-plone-host/@@metrics?format=json
 The default format is Prometheus text.
 Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 
+(metrics-built-in-metrics)=
+
 ## Built-in metrics
 
 | Metric | Type | Scope | Description |
 |---|---|---|---|
 | `plone_uptime_seconds` | gauge | instance | Process uptime |
-| `plone_info` | info | instance | Python, Zope, and Plone version labels |
+| `plone_info` | gauge | instance | Python, Zope, and Plone version labels, value always `1` |
 | `plone_threads_active` | gauge | instance | Active Python threads |
 | `plone_process_rss_bytes` | gauge | instance | Current resident set size, from `/proc/self/statm` (Linux only) |
 | `plone_process_rss_peak_bytes` | gauge | instance | Peak resident set size since process start |
@@ -51,7 +55,7 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_request_errors` | counter | instance | HTTP errors by status code |
 | `plone_request_rss_growth_bytes_bucket` | counter | instance | Growth of the resident set size per request, histogram buckets with `_sum` and `_count` (opt-in) |
 | `plone_zodb_object_count` | gauge | global | Total objects in ZODB |
-| `plone_zodb_db_size_bytes` | gauge | global | ZODB file size |
+| `plone_zodb_db_size_bytes` | gauge | global | Size of the database in bytes, as reported by the storage |
 | `plone_zodb_connections` | gauge | instance | Open ZODB connections, in use or idle in the pool |
 | `plone_zodb_connections_idle` | gauge | instance | Idle ZODB connections waiting in the pool |
 | `plone_zodb_connections_alive` | gauge | instance | ZODB connections still in memory, including ones the pool has released, per database |
@@ -64,13 +68,19 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_content_total` | gauge | global | Content objects by portal type and site |
 | `plone_content_by_state` | gauge | global | Content objects by workflow state and site |
 
+(metrics-labels)=
+
 ## Labels
 
-All `plone_request*` metrics carry an `auth="authenticated"` or `auth="anonymous"` label, so traffic can be split by authentication state.
+All `plone_request*` metrics carry an `auth="authenticated"` or `auth="anonymous"` label.
+This label splits traffic by authentication state.
 User identity is never a metric label.
-It appears only as a span attribute; see {doc}`/reference/configuration` for the `PLONE_OBSERVABILITY_OTEL_USER_ID` setting and {doc}`/explanation/metrics-design` for the reasoning.
+It appears only as a span attribute.
+See {doc}`/reference/configuration` for the `PLONE_OBSERVABILITY_OTEL_USER_ID` setting and {doc}`/explanation/metrics-design` for the reasoning.
 
 `plone_zodb_conflicts_total` carries `retry="true"` for a conflict that was retried and `retry="false"` for the final attempt that gave up.
+
+(metrics-scope)=
 
 ## Scope
 
@@ -84,11 +94,16 @@ instance
 :   The value is specific to this process, for example request counts and resident set size.
     Sum across instances when aggregating.
 
+(metrics-the-request-duration-maximum)=
+
 ## The request duration maximum
 
-`plone_request_duration_seconds_max` is a per-scrape-window gauge.
-A histogram can only bound latency to its bucket edges, so the true worst-case request time is tracked directly and reset on every scrape.
-Scrape it from a single Prometheus target: multiple concurrent scrapers would each see only part of the window.
+`plone_request_duration_seconds_max` is the longest request duration since the previous scrape.
+Each scrape resets it.
+You must scrape it from a single Prometheus target.
+With several scrapers, each one sees only part of the window.
+
+(metrics-memory-metrics)=
 
 ## Memory metrics
 
@@ -138,6 +153,8 @@ Each metric is left out where its source is not available.
     `plone_jemalloc_resident_bytes` is an upper bound.
     jemalloc counts pages that it handed out but the application never touched as resident.
 
+(metrics-rss-growth-per-request)=
+
 ## RSS growth per request
 
 `plone_request_rss_growth_bytes` is a histogram of how much the resident set size grew during a request.
@@ -150,6 +167,8 @@ A request during which the resident set size shrank counts as zero growth.
 Bucket bounds range from 0 to 256 MiB.
 
 A request that grows the resident set size by more than `PLONE_OBSERVABILITY_REQUEST_RSS_WARN_MIB` logs a warning with its method and path.
+
+(metrics-connections-still-in-memory)=
 
 ## Connections still in memory
 
@@ -166,15 +185,16 @@ The count includes historical connections, which `plone_zodb_connections` does n
 A connection the pool has released stays counted until the garbage collector frees it.
 That takes two collections of the oldest generation.
 
+(metrics-catalog-backends)=
+
 ## Catalog backends
 
-`plone_content_total` and `plone_content_by_state` come from the `content` provider, which reads the `portal_type` and `review_state` indexes through the ZCatalog index API, one Plone site at a time.
+`plone_content_total` and `plone_content_by_state` come from the `content` provider.
+It reads the `portal_type` and `review_state` indexes of each Plone site through the ZCatalog index API.
 
-A catalog backend that keeps its data outside the site cannot rely on that.
-If it emulates the index API, the generic provider still emits, but the counts may cover more than one site.
-plone-pgcatalog is such a backend: one PostgreSQL table holds all sites, so the generic provider would report the database-wide counts under every site's label.
-Such a backend replaces the `content` adapter with its own provider in `overrides.zcml`, keeping the metric names, and plone-pgcatalog does exactly that.
-See {doc}`/how-to/add-custom-metric-provider` for how to replace a built-in provider.
+A catalog backend that does not keep its data per site must replace the `content` adapter in its `overrides.zcml` and keep the metric names.
+plone-pgcatalog does.
+See {doc}`/explanation/metrics-design` for the reason and {doc}`/how-to/add-custom-metric-provider` for how to replace a built-in provider.
 
 ```{seealso}
 {doc}`/how-to/scrape-with-prometheus` shows scrape configuration and PromQL recipes.

@@ -6,6 +6,8 @@ A formatter is a named utility implementing `IMetricFormatter`.
 The utility name becomes the value of the `format` query-string parameter.
 For the interface members, see {doc}`/reference/interfaces`.
 
+(add-custom-metric-formatter-implement-the-formatter)=
+
 ## Implement the formatter
 
 ```python
@@ -24,6 +26,8 @@ class CSVFormatter:
         return "\n".join(lines)
 ```
 
+(add-custom-metric-formatter-register-the-utility)=
+
 ## Register the utility
 
 ```xml
@@ -33,6 +37,8 @@ class CSVFormatter:
     name="csv"
     />
 ```
+
+(add-custom-metric-formatter-use-it)=
 
 ## Use it
 

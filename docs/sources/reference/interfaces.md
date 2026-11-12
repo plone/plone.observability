@@ -2,7 +2,10 @@
 
 plone.observability registers all of its components through the Zope Component Architecture.
 Third-party packages extend or replace any of them.
-This page describes the interfaces; {doc}`/how-to/add-custom-health-check`, {doc}`/how-to/add-custom-metric-provider`, and {doc}`/how-to/add-custom-metric-formatter` show how to register implementations.
+This page describes the interfaces.
+These pages show how to register implementations: {doc}`/how-to/add-custom-health-check`, {doc}`/how-to/add-custom-metric-provider`, and {doc}`/how-to/add-custom-metric-formatter`.
+
+(interfaces-ilivenesscheck)=
 
 ## `ILivenessCheck`
 
@@ -21,6 +24,8 @@ A liveness check must not access ZODB and must not block.
   - Returns a `(ok: bool, message: str)` tuple.
 ```
 
+(interfaces-ireadinesscheck)=
+
 ## `IReadinessCheck`
 
 A named utility that reports whether the process can serve requests.
@@ -37,6 +42,8 @@ A readiness check may access ZODB.
 * - `__call__()`
   - Returns a `(ok: bool, message: str)` tuple.
 ```
+
+(interfaces-imetricprovider)=
 
 ## `IMetricProvider`
 
@@ -55,6 +62,8 @@ An adapter on `OFS.interfaces.IApplication` that yields metrics.
   - A generator yielding `Metric` instances.
 ```
 
+(interfaces-imetricformatter)=
+
 ## `IMetricFormatter`
 
 A named utility that serializes metrics to a wire format.
@@ -72,6 +81,8 @@ A named utility that serializes metrics to a wire format.
 
 The formatter name is selected with the `format` query-string parameter on `@@metrics`.
 
+(interfaces-metric)=
+
 ## `Metric`
 
 The value object yielded by metric providers.
@@ -86,14 +97,23 @@ The value object yielded by metric providers.
 * - `value`
   - The numeric value.
 * - `type`
-  - The metric type: `gauge`, `counter`, or `info`.
+  - The metric type: `gauge` or `counter`.
 * - `scope`
   - `"instance"` or `"global"`.
 * - `help`
   - A human-readable description.
+* - `labels`
+  - A dictionary of label names and values. Default: empty.
 ```
 
+The Prometheus text format has no `info` type.
+A metric with `type="info"` makes Prometheus reject the whole scrape.
+Report version or build information as a `gauge` with the value `1` and the details in `labels`, as `plone_info` does.
+A histogram is reported as counters named `<name>_bucket` with an `le` label, `<name>_sum`, and `<name>_count`.
+
 Import it from `plone.observability.metric`.
+
+(interfaces-start-span)=
 
 ## `start_span`
 

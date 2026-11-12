@@ -1,3 +1,7 @@
+---
+description: "Health probes, a Prometheus and JSON metrics endpoint, and optional OpenTelemetry tracing for Plone 6.2 running in containers."
+---
+
 # plone.observability
 
 <!-- diataxis: landing -->
@@ -12,18 +16,22 @@ Kubernetes-style health probes, a pluggable Prometheus and JSON metrics endpoint
 
 Plone's built-in `@@ok` view answers `OK` whether the database is reachable or not, right up until the process is too busy to answer at all.
 That is not enough to orchestrate Plone in Kubernetes.
-plone.observability gives an orchestrator the real signals it needs: separate liveness, readiness, and startup probes on a dedicated port, plus a metrics endpoint your monitoring stack can scrape.
+plone.observability gives an orchestrator the real signals it needs: separate liveness, readiness, and startup probes on a dedicated port.
+It also provides a metrics endpoint your monitoring stack can scrape.
 
 **Key capabilities:**
 
 - Liveness, readiness, and startup probes on a separate HTTP port that stays answerable when all Zope threads are busy
 - A pluggable `@@metrics` endpoint with Prometheus text and JSON output
 - Request, ZODB, and content metrics out of the box, with low-cardinality labels
+- Memory metrics show where a process grows: resident memory split, Python allocator, garbage collector, glibc or jemalloc allocator, and ZODB connections that outlive the pool
 - Optional OpenTelemetry tracing that honors the standard `OTEL_*` environment variables
 - Extensible via the Zope Component Architecture: custom health checks, metric providers, and formatters
 
-**Requirements:** Plone 6, Python 3.10+.
+**Requirements:** Plone 6.2, Python 3.10 or later.
 OpenTelemetry tracing is an optional extra.
+
+(index-documentation)=
 
 ## Documentation
 
@@ -34,7 +42,7 @@ OpenTelemetry tracing is an optional extra.
 :link: tutorials/index
 :link-type: doc
 
-**Learning-oriented** -- step-by-step lessons to build skills.
+**Learning-oriented**: step-by-step lessons to build skills.
 
 *Start here if you are new to plone.observability.*
 :::
@@ -43,7 +51,7 @@ OpenTelemetry tracing is an optional extra.
 :link: how-to/index
 :link-type: doc
 
-**Goal-oriented** -- solutions to specific problems.
+**Goal-oriented**: solutions to specific problems.
 
 *Use these when you need to accomplish something.*
 :::
@@ -52,7 +60,7 @@ OpenTelemetry tracing is an optional extra.
 :link: reference/index
 :link-type: doc
 
-**Information-oriented** -- configuration tables and API details.
+**Information-oriented**: configuration tables and API details.
 
 *Consult when you need exact facts.*
 :::
@@ -61,12 +69,14 @@ OpenTelemetry tracing is an optional extra.
 :link: explanation/index
 :link-type: doc
 
-**Understanding-oriented** -- architecture and design decisions.
+**Understanding-oriented**: architecture and design decisions.
 
 *Read to understand why the package works the way it does.*
 :::
 
 ::::
+
+(index-quick-start)=
 
 ## Quick start
 
