@@ -2,6 +2,83 @@
 
 <!-- towncrier release notes start -->
 
+## 1.3.0 (2026-11-12)
+
+### New features:
+
+- Add `plone_zodb_connections_alive`, the ZODB connections still in memory per
+  database, including ones the pool has released. A count that stays above
+  `plone_zodb_connections` for hours shows released connections pinned by a
+  leftover reference, such as a stored traceback, together with every object they
+  loaded. The connection class is wrapped when Zope opens the database. ([#94](https://github.com/plone/plone.observability/issues/94))
+- Add opt-in RSS growth per request (`PLONE_OBSERVABILITY_REQUEST_RSS=1`): the
+  `plone_request_rss_growth_bytes` histogram, a warning with method and path for
+  requests that grow the process by more than
+  `PLONE_OBSERVABILITY_REQUEST_RSS_WARN_MIB` (default 20), and the span attributes
+  `plone.process.rss_start_bytes`, `plone.process.rss_end_bytes` and
+  `plone.process.rss_delta_bytes` on the request span and each tile subrequest span. ([#94](https://github.com/plone/plone.observability/issues/94))
+- Add memory metrics that show where a process grows: `plone_process_rss_anon_bytes`
+  and `plone_process_rss_file_bytes`, `plone_python_allocated_blocks`,
+  `plone_python_interned_strings` (Python 3.12+), the garbage collector counters
+  `plone_gc_collections_total`, `plone_gc_collected_total` and
+  `plone_gc_uncollectable_total`, and the `plone_gc_pause_seconds` histogram.
+  The glibc allocator metrics `plone_malloc_*` are opt-in with
+  `PLONE_OBSERVABILITY_MALLINFO=1`, because `mallinfo2()` holds the allocator lock
+  while it walks every free chunk; they are cached for
+  `PLONE_OBSERVABILITY_METRICS_CACHE_TTL` seconds. When jemalloc replaces malloc
+  (`LD_PRELOAD`), they are left out with a warning, because glibc would report zeros. ([#94](https://github.com/plone/plone.observability/issues/94))
+- Report jemalloc's statistics as `plone_jemalloc_allocated_bytes`,
+  `plone_jemalloc_active_bytes`, `plone_jemalloc_metadata_bytes`,
+  `plone_jemalloc_resident_bytes`, `plone_jemalloc_mapped_bytes` and
+  `plone_jemalloc_retained_bytes` when a jemalloc loaded with `LD_PRELOAD` replaces
+  malloc. They are read through `mallctl()` on every scrape, which costs well under
+  a millisecond, so they need no opt-in. CI runs the test suite once with jemalloc
+  preloaded. ([#96](https://github.com/plone/plone.observability/issues/96))
+- Declare and test Python 3.15 support: trove classifier and CI test matrix.
+  The test suite passes on 3.15.0 without code changes.
+
+### Bug fixes:
+
+- Drop the bogus `OFS` dependency. `OFS` is a package inside `Zope`, which is
+  already a dependency, but on PyPI the name resolves to `ofs`, an unrelated and
+  abandoned "Open File Store" library. Every install pulled it in, and on
+  case-insensitive filesystems it collided with Zope's `OFS` package. ([#86](https://github.com/plone/plone.observability/issues/86))
+- The content metrics (`plone_content_total`, `plone_content_by_state`) are now
+  cached for `PLONE_OBSERVABILITY_METRICS_CACHE_TTL` seconds, as documented. The
+  cache lived on the provider instance, but `@@metrics` builds a fresh provider
+  per scrape, so it never hit. It now lives at module level, keyed by site id. ([#90](https://github.com/plone/plone.observability/issues/90))
+- Honor `OTEL_EXPORTER_OTLP_PROTOCOL` and `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL`.
+  The span exporter was hard-wired to OTLP over gRPC, so a collector that accepts
+  only OTLP over HTTP received nothing. `http/protobuf` now selects the HTTP
+  exporter; the default stays `grpc`, and an unsupported value logs a warning and
+  falls back to `grpc`. ([#101](https://github.com/plone/plone.observability/issues/101))
+
+### Internal:
+
+- Fix a race in the `plone_process_rss_peak_bytes` tests: they compared the metric
+  against a second `getrusage()` call, and the peak RSS could grow in between.
+  The tests now pin `getrusage()`.
+
+### Documentation:
+
+- Correct the claim that the generic content provider yields nothing on
+  plone-pgcatalog: it emits database-wide counts there, so plone-pgcatalog
+  replaces the `content` provider in its `overrides.zcml`. Document how to replace
+  a built-in provider. ([#90](https://github.com/plone/plone.observability/issues/90))
+- Explain the ZODB warning `DB.open() has N open connections with a pool_size of M`
+  that the readiness check causes when all worker threads hold a connection. It is
+  harmless: ZODB discards the probe's own, nearly empty connection, not a worker's
+  warm one. A regression test pins that pool behaviour, and the check's docstring
+  says why it deliberately goes through `db.open()`. ([#92](https://github.com/plone/plone.observability/issues/92))
+- Bring the documentation to the Plone documentation style and correct facts that
+  had drifted from the code. Most important: tracing requires the `opentelemetry`
+  WSGI filter, which sets up the exporter and installs the instrumentation; the docs
+  claimed some spans worked without it. The tracing explanation now says which spans
+  come from events and which from wrappers, the span reference lists the render
+  spans, and `llms.txt` is rewritten. Page metadata now reaches the HTML, and the
+  documentation build runs with `-W` and a prose check on pull requests.
+
+
 ## 1.2.0 (2026-10-24)
 
 ### New features:
