@@ -1,10 +1,15 @@
 from collections import defaultdict
+from plone.observability import rss
 from plone.observability.interfaces import IMetricProvider
 from plone.observability.metric import Metric
 from zope.interface import implementer
 
+import logging
 import threading
 import time
+
+
+logger = logging.getLogger(__name__)
 
 
 # Default histogram buckets (in seconds), matching Prometheus defaults
@@ -93,6 +98,63 @@ class RequestTracker:
 tracker = RequestTracker()
 
 
+# RSS growth per request, in bytes. Growth only: a negative observation would
+# make the histogram's _sum decrease, which a counter must not do.
+RSS_GROWTH_BUCKETS = (
+    0,
+    64 * 1024,
+    256 * 1024,
+    1024**2,
+    4 * 1024**2,
+    16 * 1024**2,
+    64 * 1024**2,
+    256 * 1024**2,
+)
+
+
+class RSSGrowthTracker:
+    """Thread-safe histogram of the RSS growth per request."""
+
+    def __init__(self, buckets=RSS_GROWTH_BUCKETS):
+        self._lock = threading.Lock()
+        self.buckets = buckets
+        self.counts = [0] * (len(buckets) + 1)  # the last one is +Inf
+        self.count = 0
+        self.total = 0
+
+    def record(self, growth):
+        with self._lock:
+            for i, bound in enumerate(self.buckets):
+                if growth <= bound:
+                    self.counts[i] += 1
+            self.counts[-1] += 1
+            self.count += 1
+            self.total += growth
+
+    def snapshot(self):
+        with self._lock:
+            return list(self.counts), self.count, self.total
+
+
+rss_tracker = RSSGrowthTracker()
+
+
+def _record_rss_growth(environ, start, end):
+    if start is None or end is None:
+        return
+    growth = max(end - start, 0)
+    rss_tracker.record(growth)
+    threshold = rss.warn_threshold_bytes()
+    if threshold and growth >= threshold:
+        # The path only: query strings can carry tokens (password reset).
+        logger.warning(
+            "Request grew the process RSS by %.1f MiB: %s %s",
+            growth / rss.MiB,
+            environ.get("REQUEST_METHOD", ""),
+            environ.get("PATH_INFO", ""),
+        )
+
+
 class ObservabilityMiddleware:
     """WSGI middleware that records request timing and status codes."""
 
@@ -101,6 +163,8 @@ class ObservabilityMiddleware:
 
     def __call__(self, environ, start_response):
         start = time.time()
+        rss_enabled = rss.enabled()
+        rss_start = rss.read() if rss_enabled else None
         status_code = 200
 
         def tracking_start_response(status, headers, exc_info=None):
@@ -120,6 +184,8 @@ class ObservabilityMiddleware:
                 environ.get("plone.observability.authenticated", False)
             )
             tracker.record(duration, status_code, authenticated)
+            if rss_enabled:
+                _record_rss_growth(environ, rss_start, rss.read())
 
 
 @implementer(IMetricProvider)
@@ -195,6 +261,36 @@ class RequestMetricProvider:
                     help="Total HTTP errors by status code",
                     labels={"status_code": str(status_code), "auth": auth},
                 )
+
+        if rss.enabled():
+            yield from self._rss_growth()
+
+    def _rss_growth(self):
+        counts, count, total = rss_tracker.snapshot()
+        yield Metric(
+            name="plone_request_rss_growth_bytes_sum",
+            value=total,
+            type="counter",
+            scope="instance",
+            help="Total growth of the process RSS during requests in bytes",
+        )
+        yield Metric(
+            name="plone_request_rss_growth_bytes_count",
+            value=count,
+            type="counter",
+            scope="instance",
+            help="Number of requests with an RSS reading (histogram count)",
+        )
+        bounds = [str(bound) for bound in rss_tracker.buckets] + ["+Inf"]
+        for le, bucket_count in zip(bounds, counts, strict=True):
+            yield Metric(
+                name="plone_request_rss_growth_bytes_bucket",
+                value=bucket_count,
+                type="counter",
+                scope="instance",
+                help="RSS growth per request histogram bucket",
+                labels={"le": le},
+            )
 
 
 def make_filter(app, global_conf, **local_conf):
