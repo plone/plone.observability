@@ -79,6 +79,12 @@ The standard `OTEL_*` variables are honored directly; the table below lists them
 :   OTLP collector endpoint.
     Setting it enables tracing.
 
+`OTEL_EXPORTER_OTLP_PROTOCOL`
+:   Transport for the OTLP exporter: `grpc` or `http/protobuf`.
+    `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` takes precedence for spans.
+    Any other value logs a warning once and falls back to `grpc`.
+    Default: `grpc`.
+
 `OTEL_SERVICE_NAME`
 :   Service name reported on emitted spans.
 
