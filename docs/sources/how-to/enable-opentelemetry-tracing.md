@@ -14,8 +14,16 @@ Tracing activates when an OTLP endpoint is configured.
 Set the standard OpenTelemetry environment variables:
 
 ```shell
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
 export OTEL_SERVICE_NAME=plone-backend
+```
+
+The exporter speaks OTLP over gRPC by default, usually on port `4317`.
+If your collector accepts only OTLP over HTTP, usually on port `4318`, select that transport:
+
+```shell
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 ```
 
 For the full set of variables and the package-specific overrides, see {doc}`/reference/configuration`.
