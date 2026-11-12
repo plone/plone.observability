@@ -53,7 +53,8 @@ They are cheap, continuous, and aggregate.
 
 Traces tell you *why* a particular slow request was slow.
 They show which catalog query ran long, which transform dominated the render, and how a subrequest-rendered tile nested inside the parent request.
-They are richer and more expensive, and you sample them.
+They are richer and more expensive.
+You sample them.
 
 The two are designed to hand off to each other.
 You watch the metrics continuously and reach for a trace when a metric tells you where to look.

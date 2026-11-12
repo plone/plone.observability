@@ -65,7 +65,8 @@ class MyReadinessCheck:
 
 The check name appears under `checks` in the probe response, keyed by the `name` attribute.
 
-Readiness checks run together, one run at a time, and the result is reused for a short time.
+Readiness checks run together, one run at a time.
+The result is reused for a short time.
 A check does not need its own locking or caching against concurrent probes.
 It should still return within a few seconds: while a run is stuck, the pod reports not ready.
 See {doc}`/explanation/health-probes`.

@@ -1,20 +1,23 @@
 # About health probes
 
-A container orchestrator needs to know three different things about a Plone process, and they are genuinely different questions.
+A container orchestrator needs to know three different things about a Plone process.
+They are genuinely different questions.
 This page explains why plone.observability answers them with three separate probes on a port of their own, rather than reusing Plone's `@@ok` view.
 
 (health-probes-the-problem-with-ok)=
 
 ## The problem with `@@ok`
 
-Plone has long shipped an `@@ok` view, and it is tempting to point a health check at it.
+Plone has long shipped an `@@ok` view.
+It is tempting to point a health check at it.
 The trouble is that `@@ok` returns `OK` whether the ZODB is reachable or not.
 It keeps returning `OK` right up until the process is so busy that it cannot answer at all.
 
 That is the worst possible failure shape for an orchestrator.
 A health signal that is green when the database is gone gives you false confidence.
 A health signal that only turns red once the process is already saturated tells you nothing you can act on in time.
-An orchestrator needs signals that distinguish *alive* from *ready* from *finished starting*, and it needs them to stay truthful under load.
+An orchestrator needs signals that distinguish *alive* from *ready* from *finished starting*.
+Those signals must stay truthful under load.
 
 (health-probes-why-three-probes-not-one)=
 
@@ -24,7 +27,7 @@ Kubernetes models a container's health with three probes because the right react
 
 Liveness asks whether the process is fundamentally functional.
 A failed liveness check triggers a restart.
-It must not depend on anything outside the process.
+The check must not depend on anything outside the process.
 A database check does not belong here.
 A brief ZODB outage would fail liveness across every pod at once.
 The orchestrator would respond by restarting them all, turning a transient dependency blip into a restart storm.
@@ -120,7 +123,8 @@ Budget memory for one more object cache.
 ## Why metrics are different
 
 Metrics deliberately do the opposite.
-They run on the standard Zope port, alongside the application, and they need a working database connection to produce meaningful numbers.
+They run on the standard Zope port, alongside the application.
+They need a working database connection to produce meaningful numbers.
 
 This contrast is intentional and worth holding onto.
 A health check must survive the loss of its dependencies to report that loss accurately.

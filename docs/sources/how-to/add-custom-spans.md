@@ -77,7 +77,8 @@ with start_span("myaddon.import"):
 ## Leave it in production code
 
 `start_span` is dependency-optional: when the `opentelemetry` extra is not installed it is a no-op context manager that yields `None`.
-You can call it unconditionally in shipped code without adding a hard dependency on OpenTelemetry, and it costs nothing when tracing is off.
+You can call it unconditionally in shipped code without adding a hard dependency on OpenTelemetry.
+It costs nothing when tracing is off.
 
 Name your spans with a stable, low-cardinality prefix such as your add-on name, for example `myaddon.import.store`.
 Never put ids or other unbounded values in the span name.

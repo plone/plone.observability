@@ -11,7 +11,8 @@ It covers label cardinality, metric scope, the cache in front of the expensive m
 Prometheus stores one time series per unique combination of label values.
 A label can draw its value from an unbounded set, such as a user id, a session id, or a full URL with query string.
 Such a label multiplies the series count without bound.
-This is the single most common way to make a Prometheus server fall over, and it is hard to undo once the data is in.
+This is the single most common way to make a Prometheus server fall over.
+It is hard to undo once the data is in.
 
 To avoid that, plone.observability keeps labels low-cardinality on purpose.
 Request metrics split only by `auth="authenticated"` or `auth="anonymous"`, which is two values.
@@ -49,7 +50,8 @@ Running them on every scrape, every fifteen or thirty seconds, forever, would pu
 
 These metrics sit behind a short time-to-live cache instead, sixty seconds by default, tunable with `PLONE_OBSERVABILITY_METRICS_CACHE_TTL`.
 The cache lives at module level, keyed by database name or site id, because `@@metrics` builds its providers afresh on every scrape.
-The numbers move slowly enough that a minute of staleness is invisible, and the database is spared the repeated full scans.
+The numbers move slowly enough that a minute of staleness is invisible.
+The database is spared the repeated full scans.
 
 (metrics-design-where-memory-grows)=
 
@@ -99,7 +101,8 @@ A leak shows as an excess that persists for hours or keeps growing.
 
 ### Why the malloc metrics are opt-in
 
-`mallinfo2()` is the only way to read the glibc allocator's numbers, and it is not cheap.
+`mallinfo2()` is the only way to read the glibc allocator's numbers.
+It is not cheap.
 It walks every free memory chunk while holding the allocator lock.
 On a heap fragmented into a million free chunks, a call takes about 100 milliseconds.
 Threads that need memory wait for it.
