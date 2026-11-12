@@ -2,6 +2,23 @@
 
 <!-- towncrier release notes start -->
 
+## 1.3.1 (2026-11-12)
+
+### Bug fixes:
+
+- The `observability` and `opentelemetry` WSGI filters no longer import Zope or
+  Plone when PasteDeploy loads them. PasteDeploy imports the filter modules before
+  it calls the Zope app factory that applies `zope.conf`, and through
+  `plone.base.utils` the filters pulled in `OFS.ObjectManager`, Chameleon and
+  `zope.i18n` at that point. Those modules kept what they read at import time: the
+  default configuration instead of `instancehome` and `clienthome` from `zope.conf`
+  (the ZMI import did not find `.zexp` files), and the environment without the
+  `<environment>` block (`CHAMELEON_CACHE` and the `zope_i18n_*` settings had no
+  effect). A local helper replaces `plone.base.utils.boolean_value`, and
+  `plone.base` is no longer a dependency. The `observability` filter had this
+  problem only since 1.3.0. ([#105](https://github.com/plone/plone.observability/issues/105))
+
+
 ## 1.3.0 (2026-11-12)
 
 ### New features:
