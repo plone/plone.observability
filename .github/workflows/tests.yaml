@@ -9,12 +9,20 @@ permissions:
 
 jobs:
   test:
-    name: Python ${{ matrix.python-version }}
+    name: Python ${{ matrix.python-version }}${{ matrix.allocator == 'jemalloc' && ' (jemalloc)' || '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+        allocator: ["glibc"]
+        include:
+          # The whole suite with jemalloc replacing malloc, for the
+          # plone_jemalloc_* metrics and the glibc guard (#96).
+          - python-version: "3.12"
+            allocator: "jemalloc"
+    env:
+      COVERAGE_SUFFIX: ${{ matrix.python-version }}${{ matrix.allocator == 'jemalloc' && '-jemalloc' || '' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -34,17 +42,32 @@ jobs:
           uv venv
           uv pip install -c https://dist.plone.org/release/6.2-latest/constraints.txt -e ".[test,opentelemetry]"
 
+      - name: Install jemalloc
+        if: matrix.allocator == 'jemalloc'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libjemalloc2
+          echo "JEMALLOC=$(dpkg -L libjemalloc2 | grep 'libjemalloc.so.2$')" >> "$GITHUB_ENV"
+
+      - name: Check that jemalloc is detected
+        if: matrix.allocator == 'jemalloc'
+        run: |
+          LD_PRELOAD="$JEMALLOC" uv run python -c \
+            "from plone.observability.metrics.providers import python; assert python._mallctl is not None"
+
       - name: Run tests with coverage
-        run: uv run pytest --cov --cov-report=
+        run: |
+          if [ "${{ matrix.allocator }}" = "jemalloc" ]; then export LD_PRELOAD="$JEMALLOC"; fi
+          uv run pytest --cov --cov-report=
 
       - name: Rename coverage data
-        run: mv .coverage .coverage.${{ matrix.python-version }}
+        run: mv .coverage ".coverage.$COVERAGE_SUFFIX"
 
       - name: Upload coverage data
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-data-${{ matrix.python-version }}
-          path: .coverage.${{ matrix.python-version }}
+          name: coverage-data-${{ env.COVERAGE_SUFFIX }}
+          path: .coverage.${{ env.COVERAGE_SUFFIX }}
           include-hidden-files: true
           if-no-files-found: ignore
 

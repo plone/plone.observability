@@ -103,6 +103,13 @@ A jemalloc loaded with `LD_PRELOAD` replaces `malloc` entirely.
 glibc then reports zero for everything, which looks plausible and is wrong.
 The package detects jemalloc and leaves the malloc metrics out instead.
 
+jemalloc has statistics of its own, and the package reports them as `plone_jemalloc_*`.
+Reading them costs well under a millisecond.
+They need no opt-in.
+`plone_jemalloc_allocated_bytes` is what the application asked for.
+`plone_jemalloc_active_bytes` is the pages that hold those allocations.
+The difference is fragmentation inside pages.
+
 ### Memory growth per request
 
 The metrics above show that a process grows, and roughly what grows.
