@@ -19,7 +19,7 @@ through Zope/WSGI, so they produce no spans and need no exclusion here.
 
 from opentelemetry import context as otel_context
 from opentelemetry.util.http import ExcludeList
-from plone.base.utils import boolean_value
+from plone.observability.utils import boolean_value
 
 import os
 

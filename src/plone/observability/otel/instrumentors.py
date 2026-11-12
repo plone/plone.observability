@@ -7,7 +7,7 @@ become child spans in the current trace. Opt-in; gated by the same OTel
 activation as the rest of the package.
 """
 
-from plone.base.utils import boolean_value
+from plone.observability.utils import boolean_value
 
 import importlib
 import importlib.util

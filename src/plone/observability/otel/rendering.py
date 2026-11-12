@@ -7,11 +7,11 @@ traced render wraps each transient child instance's render() and then calls the
 original -- each child wrapper opens a span nested under the manager/column span.
 """
 
-from plone.base.utils import boolean_value
 from plone.observability.otel import dbcounts
 from plone.observability.otel import exclusions
 from plone.observability.otel.provider import is_enabled
 from plone.observability.spans import start_span
+from plone.observability.utils import boolean_value
 
 import os
 
