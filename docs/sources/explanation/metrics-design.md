@@ -78,8 +78,11 @@ It caches them like the other expensive metrics.
 
 They also have a blind spot.
 They cover only glibc `malloc`.
-A Rust extension may use its own allocator, such as mimalloc, and a jemalloc loaded with `LD_PRELOAD` replaces `malloc` entirely.
+A Rust extension may use its own allocator, such as mimalloc.
 The anonymous memory that no other metric accounts for is then the part these allocators hold.
+A jemalloc loaded with `LD_PRELOAD` replaces `malloc` entirely.
+glibc then reports zero for everything, which looks plausible and is wrong.
+The package detects jemalloc and leaves the malloc metrics out instead.
 
 ## The ZODB activity monitor
 

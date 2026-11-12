@@ -118,7 +118,8 @@ Each metric is left out where its source is not available.
     Set `PLONE_OBSERVABILITY_MALLINFO=1` to turn them on.
     The values are cached for `PLONE_OBSERVABILITY_METRICS_CACHE_TTL` seconds.
     They cover only memory allocated through glibc `malloc`.
-    Memory from other allocators, such as mimalloc in a Rust extension or a jemalloc loaded with `LD_PRELOAD`, does not appear in them.
+    Memory from other allocators, such as mimalloc in a Rust extension, does not appear in them.
+    When a jemalloc loaded with `LD_PRELOAD` replaces `malloc`, the metrics are left out, and a warning is logged once.
 
 ## Catalog backends
 

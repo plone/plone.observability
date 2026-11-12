@@ -19,6 +19,8 @@ def _reset_module_state(monkeypatch):
     test a fresh tracker and an empty cache, and unhook the GC callback."""
     monkeypatch.setattr(python, "_gc_pauses", python.GCPauseTracker())
     monkeypatch.setattr(python, "_malloc_cache", None)
+    monkeypatch.setattr(python, "_jemalloc_active", False)
+    monkeypatch.setattr(python, "_warned_jemalloc", False)
     yield
     python._gc_pauses.uninstall()
 
@@ -178,6 +180,26 @@ class TestMalloc:
         names = {m.name for m in collect()}
         assert not any(name.startswith("plone_malloc_") for name in names)
 
+    def test_omitted_when_jemalloc_replaces_malloc(self, monkeypatch, caplog):
+        # With jemalloc preloaded, glibc's mallinfo2() still resolves but
+        # reports zeros; publishing them would be confidently wrong.
+        monkeypatch.setenv("PLONE_OBSERVABILITY_MALLINFO", "1")
+        monkeypatch.setattr(python, "_mallinfo2", lambda: FakeMallInfo2())
+        monkeypatch.setattr(python, "_jemalloc_active", True)
+        with caplog.at_level("WARNING", logger=python.logger.name):
+            collect()
+            names = {m.name for m in collect()}
+        assert not any(name.startswith("plone_malloc_") for name in names)
+        warnings = [r for r in caplog.records if "jemalloc" in r.getMessage()]
+        assert len(warnings) == 1  # logged once, not per scrape
+
+    def test_no_jemalloc_warning_when_disabled(self, monkeypatch, caplog):
+        monkeypatch.delenv("PLONE_OBSERVABILITY_MALLINFO", raising=False)
+        monkeypatch.setattr(python, "_jemalloc_active", True)
+        with caplog.at_level("WARNING", logger=python.logger.name):
+            collect()
+        assert not [r for r in caplog.records if "jemalloc" in r.getMessage()]
+
     @pytest.mark.skipif(
         not sys.platform.startswith("linux"), reason="glibc mallinfo2 on Linux"
     )
@@ -193,3 +215,15 @@ class TestMalloc:
 def test_load_mallinfo2_without_symbol(monkeypatch):
     monkeypatch.setattr(python.ctypes, "CDLL", lambda name: types.SimpleNamespace())
     assert python._load_mallinfo2() is None
+
+
+def test_detect_jemalloc(monkeypatch):
+    monkeypatch.setattr(
+        python.ctypes, "CDLL", lambda name: types.SimpleNamespace(mallctl=object())
+    )
+    assert python._detect_jemalloc() is True
+
+
+def test_detect_no_jemalloc(monkeypatch):
+    monkeypatch.setattr(python.ctypes, "CDLL", lambda name: types.SimpleNamespace())
+    assert python._detect_jemalloc() is False

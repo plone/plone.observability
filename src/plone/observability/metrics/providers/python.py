@@ -5,10 +5,14 @@ from zope.interface import implementer
 
 import ctypes
 import gc
+import logging
 import os
 import sys
 import threading
 import time
+
+
+logger = logging.getLogger(__name__)
 
 
 # GC pauses are short: a young collection takes microseconds, a full one on a
@@ -113,6 +117,23 @@ def _load_mallinfo2():
 
 _mallinfo2 = _load_mallinfo2()
 
+
+def _detect_jemalloc():
+    """Return True if jemalloc replaces malloc in this process.
+
+    A jemalloc loaded with ``LD_PRELOAD`` exports ``mallctl`` into the global
+    symbol namespace. glibc's ``mallinfo2()`` still resolves then, but reports
+    zeros, because glibc no longer serves the allocations.
+    """
+    try:
+        return hasattr(ctypes.CDLL(None), "mallctl")
+    except (OSError, TypeError):
+        return False
+
+
+_jemalloc_active = _detect_jemalloc()
+_warned_jemalloc = False
+
 # mallinfo2() walks every free chunk while holding the arena lock: about
 # 100 ns per chunk, so 100 ms on a heap fragmented into a million free chunks,
 # while threads allocating from that arena wait. It is therefore opt-in and
@@ -154,6 +175,17 @@ def _malloc_values():
     return values
 
 
+def _warn_jemalloc():
+    global _warned_jemalloc
+    if not _warned_jemalloc:
+        logger.warning(
+            "PLONE_OBSERVABILITY_MALLINFO is set, but jemalloc replaces glibc "
+            "malloc in this process; leaving out the plone_malloc_* metrics, "
+            "which would read zero"
+        )
+        _warned_jemalloc = True
+
+
 @implementer(IMetricProvider)
 class PythonMetricProvider:
     """Provides Python allocator, garbage collector and malloc metrics."""
@@ -188,6 +220,9 @@ class PythonMetricProvider:
         yield from self._gc_pauses()
 
         if _malloc_enabled() and _mallinfo2 is not None:
+            if _jemalloc_active:
+                _warn_jemalloc()
+                return
             values = _malloc_values()
             for name, _, help_text in _MALLOC_METRICS:
                 yield Metric(
