@@ -50,6 +50,20 @@ Every how-to guide links here rather than repeating these values.
     Set to `1` to enable.
     Default: `0`.
 
+`PLONE_OBSERVABILITY_REQUEST_RSS`
+:   Read the resident set size before and after each request and each tile subrequest.
+    Enables the `plone_request_rss_growth_bytes` histogram, the warning below, and the `plone.process.rss_*` span attributes.
+    It needs `/proc/self/statm` (Linux).
+    Set to `1` to enable.
+    Default: `0`.
+
+`PLONE_OBSERVABILITY_REQUEST_RSS_WARN_MIB`
+:   RSS growth of a single request, in MiB, that logs a warning with the request method and path.
+    The query string is left out.
+    Set to `0` to disable the warning.
+    Applies only when `PLONE_OBSERVABILITY_REQUEST_RSS` is enabled.
+    Default: `20`.
+
 `PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR`
 :   Install a minimal ZODB activity monitor for the load and store counters.
     Set to `0` to disable.

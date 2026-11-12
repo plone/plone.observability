@@ -46,6 +46,20 @@ The `ZPublisher.publish` span (request total), each subrequest span (per-tile de
 The last three require zodb-pgjsonb (>= 1.16.0 for `load_pg_queries`); on other storages they read as 0 (best-effort, no dependency).
 `load_pg_objects / load_pg_queries` is objects-per-round-trip: ≈ 1 signals an N+1 pattern, ≫ 1 signals well-batched loads (`load_multiple`/`prefetch`), so `prefetch` adoption is visible without a wall-time A/B.
 
+## Per-span memory attributes
+
+With `PLONE_OBSERVABILITY_REQUEST_RSS=1`, the root request span and each subrequest span carry the resident set size of the process:
+
+| Attribute | Meaning |
+|---|---|
+| `plone.process.rss_start_bytes` | resident set size when the span started |
+| `plone.process.rss_end_bytes` | resident set size when the application returned or the subrequest finished |
+| `plone.process.rss_delta_bytes` | end minus start, negative when the resident set size shrank |
+
+The attributes need `/proc/self/statm` (Linux).
+OpenTelemetry has no semantic convention for them.
+They use the `plone.` namespace.
+
 ## Custom spans
 
 Application code can open child spans with a dependency-optional helper.

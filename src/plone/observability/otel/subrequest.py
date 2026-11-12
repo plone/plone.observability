@@ -11,6 +11,7 @@ from opentelemetry import trace
 from opentelemetry.trace import set_span_in_context
 from opentelemetry.trace import Status
 from opentelemetry.trace import StatusCode
+from plone.observability import rss
 from plone.observability.otel import dbcounts
 from plone.observability.otel import exclusions
 from plone.observability.otel.provider import is_enabled
@@ -56,6 +57,7 @@ def _traced_subrequest(wrapped, instance, args, kwargs):
         span.set_attribute("http.url", url)
         span.set_attribute("http.method", "GET")
         before = dbcounts.read_counts(request)
+        rss_start = rss.read() if rss.enabled() else None
         try:
             response = wrapped(*args, **kwargs)
         except Exception as exc:
@@ -63,6 +65,8 @@ def _traced_subrequest(wrapped, instance, args, kwargs):
             span.record_exception(exc)
             raise
         dbcounts.annotate(span, before, dbcounts.read_counts(request))
+        if rss_start is not None:
+            rss.annotate(span, rss_start, rss.read())
         status = getattr(response, "status", None)
         if isinstance(status, int):
             span.set_attribute("http.status_code", status)

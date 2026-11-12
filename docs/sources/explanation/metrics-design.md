@@ -103,6 +103,33 @@ A jemalloc loaded with `LD_PRELOAD` replaces `malloc` entirely.
 glibc then reports zero for everything, which looks plausible and is wrong.
 The package detects jemalloc and leaves the malloc metrics out instead.
 
+### Memory growth per request
+
+The metrics above show that a process grows, and roughly what grows.
+They do not show which request made it grow.
+Step-wise growth is the hardest to explain from the outside, and a single page or tile often causes it.
+
+With `PLONE_OBSERVABILITY_REQUEST_RSS=1`, the package reads the resident set size before and after each request and each tile subrequest.
+The histogram `plone_request_rss_growth_bytes` shows whether large steps happen.
+The span attributes show which page or tile caused them.
+A trace backend can filter for spans above a threshold.
+A warning in the log names the path of a request that grew the process by more than a threshold.
+
+The readings are hints, for two reasons.
+The resident set size belongs to the whole process.
+With several worker threads, one request's allocations show up on another request that runs at the same time.
+The resident set size also counts memory pages.
+It does not count allocations.
+A request served from memory that the allocator already holds reads as zero growth.
+The next request that needs a new page gets the step.
+For the question of which request grows the heap, that is the right measure.
+A single large value can be a neighbor's doing.
+Repeated large values on the same path or tile are the signal.
+
+The histogram records growth only.
+A negative observation would make its `_sum` decrease, and Prometheus treats that as a counter reset.
+The span attributes keep the sign.
+
 ## The ZODB activity monitor
 
 `plone_zodb_loads_total` and `plone_zodb_stores_total` count objects loaded from and stored to the database.

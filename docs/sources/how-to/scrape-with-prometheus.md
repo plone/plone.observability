@@ -104,6 +104,13 @@ Time spent in garbage collection, as a share of wall-clock time:
 rate(plone_gc_pause_seconds_sum{job="plone"}[5m])
 ```
 
+With `PLONE_OBSERVABILITY_REQUEST_RSS=1`, the rate of requests that grew the process by more than 16 MiB:
+
+```promql
+rate(plone_request_rss_growth_bytes_count[5m])
+  - ignoring(le) rate(plone_request_rss_growth_bytes_bucket{le="16777216"}[5m])
+```
+
 Released ZODB connections that stayed in memory for a whole hour, a sign of connections pinned by a leftover reference:
 
 ```promql

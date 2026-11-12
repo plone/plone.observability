@@ -43,6 +43,7 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_request_duration_seconds_bucket` | counter | instance | Request duration histogram buckets |
 | `plone_request_duration_seconds_max` | gauge | instance | Worst-case request duration since the last scrape |
 | `plone_request_errors` | counter | instance | HTTP errors by status code |
+| `plone_request_rss_growth_bytes_bucket` | counter | instance | Growth of the resident set size per request, histogram buckets with `_sum` and `_count` (opt-in) |
 | `plone_zodb_object_count` | gauge | global | Total objects in ZODB |
 | `plone_zodb_db_size_bytes` | gauge | global | ZODB file size |
 | `plone_zodb_connections` | gauge | instance | Open ZODB connections, in use or idle in the pool |
@@ -121,6 +122,19 @@ Each metric is left out where its source is not available.
     They cover only memory allocated through glibc `malloc`.
     Memory from other allocators, such as mimalloc in a Rust extension, does not appear in them.
     When a jemalloc loaded with `LD_PRELOAD` replaces `malloc`, the metrics are left out, and a warning is logged once.
+
+## RSS growth per request
+
+`plone_request_rss_growth_bytes` is a histogram of how much the resident set size grew during a request.
+It is off by default.
+Set `PLONE_OBSERVABILITY_REQUEST_RSS=1` to turn it on.
+
+The `observability` WSGI filter reads `/proc/self/statm` before the request and again when the application returns.
+A response body that is streamed after that is not included.
+A request during which the resident set size shrank counts as zero growth.
+Bucket bounds range from 0 to 256 MiB.
+
+A request that grows the resident set size by more than `PLONE_OBSERVABILITY_REQUEST_RSS_WARN_MIB` logs a warning with its method and path.
 
 ## Connections still in memory
 

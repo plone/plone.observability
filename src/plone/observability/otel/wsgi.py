@@ -1,6 +1,8 @@
 """WSGI middleware + serving-only OTel activation via a PasteDeploy filter."""
 
+from opentelemetry import trace
 from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
+from plone.observability import rss
 from plone.observability.otel import catalog
 from plone.observability.otel import exclusions
 from plone.observability.otel import instrumentors
@@ -25,7 +27,17 @@ def make_filter(app, global_conf, **local_conf):
         rendering.register()
         instrumentors.enable()
 
-    traced_app = OpenTelemetryMiddleware(app)
+    def rss_app(environ, start_response):
+        # Runs inside the server span, so the attributes land on it.
+        if not rss.enabled():
+            return app(environ, start_response)
+        start = rss.read()
+        try:
+            return app(environ, start_response)
+        finally:
+            rss.annotate(trace.get_current_span(), start, rss.read())
+
+    traced_app = OpenTelemetryMiddleware(rss_app)
 
     def filtered(environ, start_response):
         if exclusions.is_excluded(environ.get("PATH_INFO", "")):
