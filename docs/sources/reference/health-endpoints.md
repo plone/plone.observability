@@ -8,6 +8,8 @@ It is not started on Zope process startup.
 `zconsole` and script runs never touch the health port.
 See {doc}`/how-to/install` for wiring the filter.
 
+(health-endpoints-endpoints)=
+
 ## Endpoints
 
 `/live`
@@ -40,6 +42,8 @@ The ZODB check borrows a connection from the ZODB connection pool.
 When all worker threads hold one, ZODB logs `DB.open() has N open connections with a pool_size of M`.
 This warning is harmless.
 See {doc}`/explanation/health-probes` for why, and how to avoid the warning.
+
+(health-endpoints-response-format)=
 
 ## Response format
 

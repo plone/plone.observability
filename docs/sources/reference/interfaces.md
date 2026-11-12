@@ -5,6 +5,8 @@ Third-party packages extend or replace any of them.
 This page describes the interfaces.
 These pages show how to register implementations: {doc}`/how-to/add-custom-health-check`, {doc}`/how-to/add-custom-metric-provider`, and {doc}`/how-to/add-custom-metric-formatter`.
 
+(interfaces-ilivenesscheck)=
+
 ## `ILivenessCheck`
 
 A named utility that reports whether the process is fundamentally alive.
@@ -21,6 +23,8 @@ A liveness check must not access ZODB and must not block.
 * - `__call__()`
   - Returns a `(ok: bool, message: str)` tuple.
 ```
+
+(interfaces-ireadinesscheck)=
 
 ## `IReadinessCheck`
 
@@ -39,6 +43,8 @@ A readiness check may access ZODB.
   - Returns a `(ok: bool, message: str)` tuple.
 ```
 
+(interfaces-imetricprovider)=
+
 ## `IMetricProvider`
 
 An adapter on `OFS.interfaces.IApplication` that yields metrics.
@@ -56,6 +62,8 @@ An adapter on `OFS.interfaces.IApplication` that yields metrics.
   - A generator yielding `Metric` instances.
 ```
 
+(interfaces-imetricformatter)=
+
 ## `IMetricFormatter`
 
 A named utility that serializes metrics to a wire format.
@@ -72,6 +80,8 @@ A named utility that serializes metrics to a wire format.
 ```
 
 The formatter name is selected with the `format` query-string parameter on `@@metrics`.
+
+(interfaces-metric)=
 
 ## `Metric`
 
@@ -102,6 +112,8 @@ Report version or build information as a `gauge` with the value `1` and the deta
 A histogram is reported as counters named `<name>_bucket` with an `le` label, `<name>_sum`, and `<name>_count`.
 
 Import it from `plone.observability.metric`.
+
+(interfaces-start-span)=
 
 ## `start_span`
 

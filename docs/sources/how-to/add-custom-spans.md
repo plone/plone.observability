@@ -6,6 +6,8 @@ The helper makes that time show up in your traces.
 
 For the helper signature, see {doc}`/reference/tracing`.
 
+(add-custom-spans-open-a-span-around-your-code)=
+
 ## Open a span around your code
 
 Import `start_span` and wrap the work in a `with` block.
@@ -23,6 +25,8 @@ def rebuild_report(items):
 The span nests automatically under whatever span is currently active, usually the `ZPublisher.publish` span for the request.
 It appears in your trace backend as a child, with its own start time and duration.
 
+(add-custom-spans-attach-attributes)=
+
 ## Attach attributes
 
 Pass a dictionary of attributes to record context alongside the span.
@@ -36,6 +40,8 @@ with start_span("myaddon.rebuild_report", {"myaddon.item_count": len(items)}):
 Keep attribute values bounded, as you do metric labels.
 Use a count or a category.
 Do not use an unbounded list of ids.
+
+(add-custom-spans-add-attributes-or-events-during-the-span)=
 
 ## Add attributes or events during the span
 
@@ -51,6 +57,8 @@ with start_span("myaddon.rebuild_report") as span:
         span.set_attribute("myaddon.rows_written", result.rows)
 ```
 
+(add-custom-spans-nest-spans)=
+
 ## Nest spans
 
 Spans opened inside another `start_span` block nest under it.
@@ -63,6 +71,8 @@ with start_span("myaddon.import"):
     with start_span("myaddon.import.store"):
         store(data)
 ```
+
+(add-custom-spans-leave-it-in-production-code)=
 
 ## Leave it in production code
 

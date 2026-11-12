@@ -3,6 +3,8 @@
 A container orchestrator needs to know three different things about a Plone process, and they are genuinely different questions.
 This page explains why plone.observability answers them with three separate probes on a port of their own, rather than reusing Plone's `@@ok` view.
 
+(health-probes-the-problem-with-ok)=
+
 ## The problem with `@@ok`
 
 Plone has long shipped an `@@ok` view, and it is tempting to point a health check at it.
@@ -13,6 +15,8 @@ That is the worst possible failure shape for an orchestrator.
 A health signal that is green when the database is gone gives you false confidence.
 A health signal that only turns red once the process is already saturated tells you nothing you can act on in time.
 An orchestrator needs signals that distinguish *alive* from *ready* from *finished starting*, and it needs them to stay truthful under load.
+
+(health-probes-why-three-probes-not-one)=
 
 ## Why three probes, not one
 
@@ -37,6 +41,8 @@ Without a dedicated startup signal, the liveness probe would start checking too 
 It would then restart a process that was still booting.
 The startup probe holds the liveness probe off until Plone is actually up.
 
+(health-probes-why-startup-latches)=
+
 ## Why `/startup` latches
 
 The startup probe in plone.observability evaluates the readiness checks itself and latches on the first success.
@@ -47,6 +53,8 @@ Kubernetes does not run the readiness probe at all until the startup probe has s
 Implementing `/startup` as "has `/ready` passed at least once" cannot work: at startup time, `/ready` has never been polled, and never will be until `/startup` is already green.
 The two would deadlock.
 Evaluating the readiness checks directly and latching on first success breaks the chicken-and-egg and lets `/startup` stand on its own.
+
+(health-probes-why-a-separate-port-and-thread)=
 
 ## Why a separate port and thread
 
@@ -59,6 +67,8 @@ The orchestrator would read that timeout as "process dead".
 It would restart a process that was merely under load, throwing away in-flight work and making the overload worse.
 A dedicated thread on a dedicated port stays answerable through saturation.
 The liveness signal then reports what is actually true: the process is alive, just busy.
+
+(health-probes-why-readiness-runs-one-check-at-a-time)=
 
 ## Why readiness runs one check at a time
 
@@ -75,6 +85,8 @@ Only one run of the readiness checks happens at a time, in the probe thread that
 Every other probe answers at once: with the last result while the run is young, and with "not ready" once it has been running too long.
 A blocked check holds exactly one thread, and the probes keep telling the truth: this process cannot serve right now.
 A short result cache lets a burst of probes share a single check.
+
+(health-probes-why-readiness-borrows-a-pool-connection)=
 
 ## Why readiness borrows a pool connection
 
@@ -102,6 +114,8 @@ To silence it, set `pool-size` one higher than the number of worker threads.
 The probe then has a slot of its own.
 That extra connection can warm up over time when the workers use it.
 Budget memory for one more object cache.
+
+(health-probes-why-metrics-are-different)=
 
 ## Why metrics are different
 

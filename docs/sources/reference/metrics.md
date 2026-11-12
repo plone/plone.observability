@@ -6,6 +6,8 @@ It collects metrics from all registered `IMetricProvider` adapters and serialize
 Request metrics require the `observability` WSGI filter in your pipeline.
 See {doc}`/how-to/install`.
 
+(metrics-endpoint)=
+
 ## Endpoint
 
 ```text
@@ -15,6 +17,8 @@ http://your-plone-host/@@metrics?format=json
 
 The default format is Prometheus text.
 Pass `?format=json` or send an `Accept: application/json` header to get JSON.
+
+(metrics-built-in-metrics)=
 
 ## Built-in metrics
 
@@ -64,6 +68,8 @@ Pass `?format=json` or send an `Accept: application/json` header to get JSON.
 | `plone_content_total` | gauge | global | Content objects by portal type and site |
 | `plone_content_by_state` | gauge | global | Content objects by workflow state and site |
 
+(metrics-labels)=
+
 ## Labels
 
 All `plone_request*` metrics carry an `auth="authenticated"` or `auth="anonymous"` label.
@@ -73,6 +79,8 @@ It appears only as a span attribute.
 See {doc}`/reference/configuration` for the `PLONE_OBSERVABILITY_OTEL_USER_ID` setting and {doc}`/explanation/metrics-design` for the reasoning.
 
 `plone_zodb_conflicts_total` carries `retry="true"` for a conflict that was retried and `retry="false"` for the final attempt that gave up.
+
+(metrics-scope)=
 
 ## Scope
 
@@ -86,12 +94,16 @@ instance
 :   The value is specific to this process, for example request counts and resident set size.
     Sum across instances when aggregating.
 
+(metrics-the-request-duration-maximum)=
+
 ## The request duration maximum
 
 `plone_request_duration_seconds_max` is the longest request duration since the previous scrape.
 Each scrape resets it.
 You must scrape it from a single Prometheus target.
 With several scrapers, each one sees only part of the window.
+
+(metrics-memory-metrics)=
 
 ## Memory metrics
 
@@ -141,6 +153,8 @@ Each metric is left out where its source is not available.
     `plone_jemalloc_resident_bytes` is an upper bound.
     jemalloc counts pages that it handed out but the application never touched as resident.
 
+(metrics-rss-growth-per-request)=
+
 ## RSS growth per request
 
 `plone_request_rss_growth_bytes` is a histogram of how much the resident set size grew during a request.
@@ -153,6 +167,8 @@ A request during which the resident set size shrank counts as zero growth.
 Bucket bounds range from 0 to 256 MiB.
 
 A request that grows the resident set size by more than `PLONE_OBSERVABILITY_REQUEST_RSS_WARN_MIB` logs a warning with its method and path.
+
+(metrics-connections-still-in-memory)=
 
 ## Connections still in memory
 
@@ -168,6 +184,8 @@ If the event did not reach the package, the first metrics scrape installs the tr
 The count includes historical connections, which `plone_zodb_connections` does not.
 A connection the pool has released stays counted until the garbage collector frees it.
 That takes two collections of the oldest generation.
+
+(metrics-catalog-backends)=
 
 ## Catalog backends
 

@@ -4,6 +4,8 @@ OpenTelemetry tracing in plone.observability is optional and stays off unless yo
 It is built to stay out of your way.
 This page explains the design: why it is OTel-native, where the spans come from, and how tracing relates to the metrics.
 
+(tracing-otel-native-not-a-parallel-configuration)=
+
 ## OTel-native, not a parallel configuration
 
 Tracing honors the standard `OTEL_*` environment variables directly.
@@ -12,6 +14,8 @@ You configure them the way you would configure any OpenTelemetry-instrumented se
 
 The only package-specific switches are overrides: a master `PLONE_OBSERVABILITY_OTEL_ENABLED` to force tracing on or off, and a couple of toggles for the package's own defaults.
 The point is that an operator who already knows OpenTelemetry does not have to learn a Plone dialect of it.
+
+(tracing-events-where-zope-has-them-wrappers-where-it-has-none)=
 
 ## Events where Zope has them, wrappers where it has none
 
@@ -39,6 +43,8 @@ The layers are the WSGI root span and the event-driven inner spans.
 An excluded path produces no spans at all.
 The package's own `@@metrics` scrape is excluded by default for exactly this reason.
 A scrape every thirty seconds would otherwise dominate your trace volume with noise.
+
+(tracing-tracing-and-metrics-are-complementary)=
 
 ## Tracing and metrics are complementary
 

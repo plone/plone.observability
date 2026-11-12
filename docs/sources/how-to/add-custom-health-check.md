@@ -6,6 +6,8 @@ Use a readiness check for a dependency the process needs to serve traffic.
 
 For the interface members, see {doc}`/reference/interfaces`.
 
+(add-custom-health-check-add-a-liveness-check)=
+
 ## Add a liveness check
 
 A liveness check must not access ZODB and must not block.
@@ -31,6 +33,8 @@ class MyLivenessCheck:
     name="myapp"
     />
 ```
+
+(add-custom-health-check-add-a-readiness-check)=
 
 ## Add a readiness check
 

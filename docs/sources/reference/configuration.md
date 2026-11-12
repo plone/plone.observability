@@ -4,6 +4,8 @@ All configuration is done through environment variables.
 This page is the canonical list.
 Every how-to guide links here rather than repeating these values.
 
+(configuration-health-server)=
+
 ## Health server
 
 `PLONE_OBSERVABILITY_HEALTH_HOST`
@@ -26,6 +28,8 @@ Every how-to guide links here rather than repeating these values.
     Until then, probes that arrive during the run get the last result.
     After that they get `503` with a `message`, and a warning is logged once.
     Default: `10`.
+
+(configuration-metrics)=
 
 ## Metrics
 
@@ -68,6 +72,8 @@ Every how-to guide links here rather than repeating these values.
 :   Install a minimal ZODB activity monitor for the load and store counters.
     Set to `0` to disable.
     Default: `1`.
+
+(configuration-opentelemetry-tracing)=
 
 ## OpenTelemetry tracing
 

@@ -2,11 +2,15 @@
 
 This guide shows you how to turn on distributed tracing and send spans to an OTLP collector.
 
+(enable-opentelemetry-tracing-install-the-extra)=
+
 ## Install the extra
 
 ```shell
 pip install "plone.observability[opentelemetry]"
 ```
+
+(enable-opentelemetry-tracing-point-it-at-a-collector)=
 
 ## Point it at a collector
 
@@ -28,6 +32,8 @@ export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 
 For the full set of variables and the package-specific overrides, see {doc}`/reference/configuration`.
 
+(enable-opentelemetry-tracing-add-the-wsgi-filter)=
+
 ## Add the WSGI filter
 
 Add the `opentelemetry` filter to your pipeline.
@@ -37,6 +43,8 @@ See {doc}`/how-to/install`.
 The filter is required.
 It sets up the exporter, installs the instrumentation, and opens the root span of each request.
 Without it, no spans are exported.
+
+(enable-opentelemetry-tracing-exclude-noisy-paths)=
 
 ## Exclude noisy paths
 
@@ -56,6 +64,8 @@ To trace the `@@metrics` scrape after all, turn the defaults off:
 ```shell
 export PLONE_OBSERVABILITY_OTEL_EXCLUDE_DEFAULTS=0
 ```
+
+(enable-opentelemetry-tracing-external-i-o-spans-s3-http-sql)=
 
 ## External I/O spans (S3, HTTP, SQL)
 

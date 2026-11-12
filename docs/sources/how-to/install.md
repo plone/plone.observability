@@ -17,6 +17,8 @@ opentelemetry
 
 Without the filters the package is loaded but inert: the health server never starts and request metrics stay empty.
 
+(install-add-the-dependency)=
+
 ## Add the dependency
 
 Add `plone.observability` to your project dependencies.
@@ -34,6 +36,8 @@ On a plain Zope instance without Plone, include it yourself:
 ```xml
 <include package="plone.observability" />
 ```
+
+(install-wire-the-filters)=
 
 ## Wire the filters
 
@@ -88,6 +92,8 @@ Leave out `opentelemetry` and its section if you do not use the tracing extra.
 ````
 
 `````
+
+(install-verify)=
 
 ## Verify
 

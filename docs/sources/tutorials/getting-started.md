@@ -5,6 +5,8 @@ We will watch its three health probes turn green and read live metrics from the 
 Everything runs in Docker.
 You need nothing else installed.
 
+(getting-started-before-you-start)=
+
 ## Before you start
 
 You need Docker with the Compose plugin.
@@ -16,6 +18,8 @@ Docker Compose version v2.30.3
 ```
 
 Any recent version is fine.
+
+(getting-started-step-1-create-the-project-file)=
 
 ## Step 1: Create the project file
 
@@ -92,6 +96,8 @@ You do not need to understand every line yet.
 The important part is the `[pipeline:main]` section, where the `healthserver` and `observability` filters sit in front of Zope.
 Those two lines are what turn an ordinary Plone into an observable one.
 
+(getting-started-step-2-start-plone)=
+
 ## Step 2: Start Plone
 
 From the same directory, run:
@@ -114,6 +120,8 @@ plone.observability is wired in.
 
 Leave this terminal running and open a second one for the next steps.
 
+(getting-started-step-3-watch-the-liveness-probe)=
+
 ## Step 3: Watch the liveness probe
 
 The health server listens on port `8081`, separate from Plone's own port `8080`.
@@ -128,6 +136,8 @@ A `200` response with `"status": "ok"` means the process is alive.
 Notice that `checks` is empty.
 Liveness does not touch the database.
 
+(getting-started-step-4-watch-the-readiness-probe)=
+
 ## Step 4: Watch the readiness probe
 
 Now ask whether Plone can actually serve requests:
@@ -139,6 +149,8 @@ $ curl http://localhost:8081/ready
 
 This time the response carries a `zodb` check.
 Readiness confirms that the database connection works.
+
+(getting-started-step-5-watch-the-startup-probe)=
 
 ## Step 5: Watch the startup probe
 
@@ -152,6 +164,8 @@ Once it has turned green, it stays green.
 
 All three probes answer.
 Kubernetes reads these same signals to decide when to restart Plone, when to send it traffic, and when its boot is over.
+
+(getting-started-step-6-read-the-metrics)=
 
 ## Step 6: Read the metrics
 
@@ -170,6 +184,8 @@ plone_info{scope="instance",python_version="3.13.13",zope_version="6.1",plone_ve
 This is Prometheus text format, the same format a Prometheus server scrapes.
 You can recognize the Plone, Zope, and Python versions of your running process right there in `plone_info`.
 
+(getting-started-step-7-make-a-metric-move)=
+
 ## Step 7: Make a metric move
 
 Find the request counter:
@@ -185,6 +201,8 @@ plone_requests_total{scope="instance",auth="anonymous"} 2
 Run that same command a few more times and watch the number climb.
 Each scrape is itself an anonymous request.
 The `auth="anonymous"` counter goes up every time you ask.
+
+(getting-started-step-8-clean-up)=
 
 ## Step 8: Clean up
 

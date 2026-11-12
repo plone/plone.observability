@@ -7,12 +7,16 @@ A hop that cannot emit spans but forwards the header stays invisible in the trac
 The backend needs no propagation setup at all.
 The WSGI middleware extracts an incoming `traceparent` automatically.
 
+(trace-across-the-stack-prerequisites)=
+
 ## Prerequisites
 
 - Backend tracing is enabled per {doc}`/how-to/enable-opentelemetry-tracing`.
 - Every service can reach one OTLP collector, such as an OpenTelemetry Collector fanning out to Grafana Tempo or Jaeger.
 
 Give each service its own service name (`traefik`, `volto`, `plone-backend`) so the trace view shows who is who.
+
+(trace-across-the-stack-start-the-trace-at-the-ingress)=
 
 ## Start the trace at the ingress
 
@@ -36,6 +40,8 @@ The SDKs further down sample parent-based by default.
 They follow the decision of the ingress.
 You never get partial traces.
 
+(trace-across-the-stack-let-varnish-pass-the-context-through)=
+
 ## Let Varnish pass the context through
 
 Open-source Varnish emits no spans.
@@ -49,6 +55,8 @@ The time spent in Varnish shows up as the gap between the ingress span and the f
 To get the hit/miss outcome on the trace, emit an `X-Cache` response header from VCL.
 Record it on the ingress span with Traefik's `tracing.capturedResponseHeaders` option.
 If you need real cache spans, Varnish Enterprise ships native OpenTelemetry support.
+
+(trace-across-the-stack-trace-the-volto-server)=
 
 ## Trace the Volto server
 
@@ -75,11 +83,15 @@ Those requests start their trace at the ingress instead.
 If you want browser-initiated traces stitched from the first click, add the OpenTelemetry web SDK with its fetch instrumentation to your frontend.
 Most deployments skip this and accept ingress-rooted traces for client-side navigation.
 
+(trace-across-the-stack-the-backend-joins-automatically)=
+
 ## The backend joins automatically
 
 plone.observability extracts the incoming `traceparent` in its WSGI middleware.
 Beyond {doc}`/how-to/enable-opentelemetry-tracing` there is nothing to configure.
 The publish span, and the catalog, subrequest, transform, and commit spans below it, nest under Volto's outgoing request span.
+
+(trace-across-the-stack-continue-into-postgresql)=
 
 ## Continue into PostgreSQL
 
@@ -87,6 +99,8 @@ Enable the optional psycopg instrumentor if your ZODB runs on zodb-pgjsonb.
 Enable it too if anything else in the backend process talks to PostgreSQL through psycopg 3.
 The instrumentor closes the last gap with per-statement SQL spans.
 See {ref}`sql-spans-psycopg`.
+
+(trace-across-the-stack-verify-the-stitched-trace)=
 
 ## Verify the stitched trace
 

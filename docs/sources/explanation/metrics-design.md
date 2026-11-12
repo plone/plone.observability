@@ -4,6 +4,8 @@ The metrics endpoint is small on the surface and opinionated underneath.
 This page explains the choices that shape what it measures and how.
 It covers label cardinality, metric scope, the cache in front of the expensive metrics, the memory metrics, and the two ZODB monitors.
 
+(metrics-design-why-user-identity-is-never-a-label)=
+
 ## Why user identity is never a label
 
 Prometheus stores one time series per unique combination of label values.
@@ -17,6 +19,8 @@ User identity, when you want it at all, belongs on a trace span.
 Each span is a separate record.
 High cardinality is the norm there.
 That is why `enduser.id` is a span attribute gated behind `PLONE_OBSERVABILITY_OTEL_USER_ID`, and never a metric label.
+
+(metrics-design-global-versus-instance-scope)=
 
 ## Global versus instance scope
 
@@ -33,6 +37,8 @@ For global metrics you pick one instance to read from instead.
 
 The `scope` label exists so that whoever writes the PromQL can tell the two apart without memorizing which metric is which.
 
+(metrics-design-why-some-metrics-are-cached)=
+
 ## Why some metrics are cached
 
 Most metrics are cheap: read a counter, read a gauge, done.
@@ -44,6 +50,8 @@ Running them on every scrape, every fifteen or thirty seconds, forever, would pu
 These metrics sit behind a short time-to-live cache instead, sixty seconds by default, tunable with `PLONE_OBSERVABILITY_METRICS_CACHE_TTL`.
 The cache lives at module level, keyed by database name or site id, because `@@metrics` builds its providers afresh on every scrape.
 The numbers move slowly enough that a minute of staleness is invisible, and the database is spared the repeated full scans.
+
+(metrics-design-where-memory-grows)=
 
 ## Where memory grows
 
@@ -141,6 +149,8 @@ The histogram records growth only.
 A negative observation would make its `_sum` decrease, and Prometheus treats that as a counter reset.
 The span attributes keep the sign.
 
+(metrics-design-why-the-request-maximum-resets-on-every-scrape)=
+
 ## Why the request maximum resets on every scrape
 
 A histogram bounds a latency only to its bucket edges.
@@ -151,6 +161,8 @@ Each scrape reports the worst request of its own window.
 Two scrapers would split the window between them.
 Each would miss the peaks the other one read.
 
+(metrics-design-content-counts-and-catalog-backends)=
+
 ## Content counts and catalog backends
 
 The `content` provider asks each Plone site's catalog for its `portal_type` and `review_state` counts through the ZCatalog index API.
@@ -160,6 +172,8 @@ It emulates the index API.
 The generic provider would still answer.
 Every site would then report the counts of the whole database under its own label.
 A backend like that replaces the `content` provider with one that counts per site, as plone-pgcatalog does.
+
+(metrics-design-the-zodb-activity-monitor)=
 
 ## The ZODB activity monitor
 
@@ -175,6 +189,8 @@ The monitor is installed only if no activity monitor is already configured.
 The package never overrides a pre-existing monitor.
 It logs a warning and leaves the two counters unavailable instead.
 Set `PLONE_OBSERVABILITY_ZODB_ACTIVITY_MONITOR=0` to skip installation entirely.
+
+(metrics-design-conflict-metrics)=
 
 ## Conflict metrics
 

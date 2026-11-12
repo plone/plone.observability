@@ -5,6 +5,8 @@ This guide shows you how to expose your own metrics through the `@@metrics` endp
 A metric provider is an adapter on `OFS.interfaces.IApplication` that yields `Metric` instances.
 For the interface and the `Metric` fields, see {doc}`/reference/interfaces`.
 
+(add-custom-metric-provider-implement-the-provider)=
+
 ## Implement the provider
 
 ```python
@@ -31,6 +33,8 @@ class MyMetricProvider:
         )
 ```
 
+(add-custom-metric-provider-register-the-adapter)=
+
 ## Register the adapter
 
 ```xml
@@ -43,6 +47,8 @@ class MyMetricProvider:
 ```
 
 The next scrape of `@@metrics` includes the yielded metrics.
+
+(add-custom-metric-provider-replace-a-built-in-provider)=
 
 ## Replace a built-in provider
 
@@ -66,6 +72,8 @@ Keep the metric names and labels of the provider you replace.
 Dashboards and alerts then keep working.
 A catalog backend that does not store its data per site replaces the `content` provider this way.
 See {doc}`/reference/metrics` for the details.
+
+(add-custom-metric-provider-keep-labels-low-cardinality)=
 
 ## Keep labels low-cardinality
 

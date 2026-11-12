@@ -5,6 +5,8 @@ This guide shows you how to point Kubernetes liveness, readiness, and startup pr
 It assumes the `healthserver` filter is wired and the health server listens on port `8081`.
 See {doc}`/how-to/install`.
 
+(configure-kubernetes-probes-expose-the-health-port)=
+
 ## Expose the health port
 
 Declare the health port on the container alongside the main Zope port.
@@ -16,6 +18,8 @@ ports:
   - name: health
     containerPort: 8081
 ```
+
+(configure-kubernetes-probes-configure-the-three-probes)=
 
 ## Configure the three probes
 
@@ -43,6 +47,8 @@ startupProbe:
   failureThreshold: 30
   periodSeconds: 10
 ```
+
+(configure-kubernetes-probes-tune-the-startup-budget-for-slow-boots)=
 
 ## Tune the startup budget for slow boots
 

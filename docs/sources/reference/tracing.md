@@ -10,6 +10,8 @@ pip install "plone.observability[opentelemetry]"
 Tracing is OTel-native: it honors the standard `OTEL_*` environment variables and activates when the extra is installed and an OTLP endpoint is configured.
 The environment variables are listed in {doc}`/reference/configuration`.
 
+(tracing-emitted-spans)=
+
 ## Emitted spans
 
 | Span | Emitted | Key attributes |
@@ -39,6 +41,8 @@ The filter sets up the exporter, opens the root request span, and installs the c
 Without it, no spans are exported.
 See {doc}`/how-to/enable-opentelemetry-tracing`.
 
+(tracing-per-span-zodb-attributes)=
+
 ## Per-span ZODB attributes
 
 The `ZPublisher.publish` span (request total), each subrequest span (per-tile delta), and each render span carry per-span ZODB object-load counts:
@@ -58,6 +62,8 @@ On other storages they read as 0 (best-effort, no dependency).
 A ratio ≫ 1 signals well-batched loads (`load_multiple`/`prefetch`).
 The ratio makes `prefetch` adoption visible without a wall-time A/B.
 
+(tracing-per-span-memory-attributes)=
+
 ## Per-span memory attributes
 
 With `PLONE_OBSERVABILITY_REQUEST_RSS=1`, the root request span and each subrequest span carry the resident set size of the process:
@@ -71,6 +77,8 @@ With `PLONE_OBSERVABILITY_REQUEST_RSS=1`, the root request span and each subrequ
 The attributes need `/proc/self/statm` (Linux).
 OpenTelemetry has no semantic convention for them.
 They use the `plone.` namespace.
+
+(tracing-custom-spans)=
 
 ## Custom spans
 

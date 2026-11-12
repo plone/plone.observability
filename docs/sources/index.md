@@ -31,6 +31,8 @@ It also provides a metrics endpoint your monitoring stack can scrape.
 **Requirements:** Plone 6.2, Python 3.10 or later.
 OpenTelemetry tracing is an optional extra.
 
+(index-documentation)=
+
 ## Documentation
 
 ::::{grid} 2
@@ -73,6 +75,8 @@ OpenTelemetry tracing is an optional extra.
 :::
 
 ::::
+
+(index-quick-start)=
 
 ## Quick start
 
