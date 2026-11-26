@@ -64,4 +64,5 @@ See {doc}`/explanation/metrics-design`.
 ```{seealso}
 - {doc}`/reference/tracing` for the emitted spans and their attributes.
 - {doc}`/how-to/enable-opentelemetry-tracing` to turn tracing on.
+- {doc}`/how-to/add-trace-ids-to-log-lines` to find the log lines of a trace.
 ```

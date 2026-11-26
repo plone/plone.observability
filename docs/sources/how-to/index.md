@@ -17,6 +17,7 @@ scrape-with-prometheus
 enable-opentelemetry-tracing
 trace-across-the-stack
 add-custom-spans
+add-trace-ids-to-log-lines
 add-custom-health-check
 add-custom-metric-provider
 add-custom-metric-formatter

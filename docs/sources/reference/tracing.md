@@ -95,7 +95,25 @@ with start_span("myapp.expensive_step", {"items": n}):
 `start_span(name, attributes=None)` is a context manager.
 It opens a child of the currently active span and yields the span object, or `None` when the `opentelemetry` extra is not installed.
 
+(tracing-log-formatter)=
+
+## Log formatter
+
+`plone.observability.logformat.TraceContextFormatter` is a `logging.Formatter` that sets two attributes on each record it formats.
+A log format refers to them as `%(otelTraceID)s` and `%(otelSpanID)s`.
+
+| Attribute | Value |
+|---|---|
+| `otelTraceID` | Trace ID of the current span, 32 hexadecimal characters, or `0` outside a span |
+| `otelSpanID` | Span ID of the current span, 16 hexadecimal characters, or `0` outside a span |
+
+The formatter reads the current span when it formats the record.
+It is dependency-optional: without the `opentelemetry` extra both attributes are `0`.
+`opentelemetry-instrumentation-logging` sets attributes of the same names.
+A format written for one works with the other.
+
 ```{seealso}
+- {doc}`/how-to/add-trace-ids-to-log-lines` sets the formatter up in `wsgi.ini`.
 - {doc}`/how-to/add-custom-spans` walks through instrumenting your own code.
 - {doc}`/explanation/tracing` explains why the built-in spans come from Zope events and how tracing relates to metrics.
 ```

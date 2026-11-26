@@ -5,8 +5,9 @@ calls the Zope app factory that applies zope.conf. A module imported then keeps
 what it read at import time: ``OFS.ObjectManager.CONFIG`` the default configuration,
 ``chameleon.config`` the environment without zope.conf's ``<environment>`` block.
 The filter factories run after the app factory, so they may import what they need.
+The log formatter is imported even earlier, by ``logging.config.fileConfig``.
 
-Both tests run in a fresh interpreter: in the test process these modules are loaded
+These tests run in a fresh interpreter: in the test process these modules are loaded
 long before any test runs.
 """
 
@@ -63,6 +64,54 @@ def test_loading_a_filter_imports_no_zope_or_plone(name):
     loaded = result.stdout.split()
     packages = sorted({".".join(m.split(".")[:2]) for m in loaded})
     assert not loaded, f"loading the {name} filter imports {packages}"
+
+
+LOGGING_INI = """\
+[loggers]
+keys = root
+
+[handlers]
+keys = console
+
+[formatters]
+keys = generic
+
+[logger_root]
+level = INFO
+handlers = console
+
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+formatter = generic
+
+[formatter_generic]
+class = plone.observability.logformat.TraceContextFormatter
+format = trace_id=%(otelTraceID)s %(message)s
+"""
+
+
+def test_log_formatter_config_imports_no_zope_or_plone(tmp_path):
+    (tmp_path / "logging.ini").write_text(LOGGING_INI)
+    result = run(
+        f"""
+        import logging
+        import logging.config
+        import sys
+
+        logging.config.fileConfig({str(tmp_path / "logging.ini")!r})
+        logging.getLogger("test").info("hello")
+        forbidden = {FORBIDDEN!r}
+        loaded = sorted(m for m in sys.modules
+                        if any(m == f or m.startswith(f + ".") for f in forbidden))
+        print("\\n".join(loaded))
+        """
+    )
+    assert result.returncode == 0, result.stderr
+    assert "trace_id=0 hello" in result.stderr.splitlines(), result.stderr
+    loaded = result.stdout.split()
+    packages = sorted({".".join(m.split(".")[:2]) for m in loaded})
+    assert not loaded, f"the log formatter imports {packages}"
 
 
 ZOPE_CONF = """\
