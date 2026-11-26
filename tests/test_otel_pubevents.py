@@ -28,7 +28,7 @@ def test_successful_publish_emits_span(span_exporter, monkeypatch):
     names = [s.name for s in spans]
     assert "ZPublisher.publish" in names
     publish = next(s for s in spans if s.name == "ZPublisher.publish")
-    assert publish.attributes["http.route"] == "/news"
+    assert publish.attributes["url.path"] == "/news"
     assert publish.status.status_code.name in ("OK", "UNSET")
 
 

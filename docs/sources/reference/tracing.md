@@ -16,8 +16,8 @@ The environment variables are listed in {doc}`/reference/configuration`.
 
 | Span | Emitted | Key attributes |
 |---|---|---|
-| root request span | per request, from the WSGI filter | standard HTTP attributes |
-| `ZPublisher.publish` | once per request | `http.route`, `plone.published` (class name of the published object), `enduser.authenticated`, and `enduser.id` when enabled |
+| `<method>`, for example `GET` (root request span) | per request, from the WSGI filter | standard HTTP attributes, the path in `url.path` or `http.target` |
+| `ZPublisher.publish` | once per request | `url.path`, `plone.published` (class name of the published object), `enduser.authenticated`, and `enduser.id` when enabled |
 | `catalog.searchResults` | per catalog query | `plone.catalog.result_count` |
 | `catalog.unrestrictedSearchResults` | per catalog query | `plone.catalog.result_count` |
 | `transaction.commit` | per ZODB transaction completion |—|
@@ -29,6 +29,8 @@ The environment variables are listed in {doc}`/reference/configuration`.
 | `portletcolumn <name>` | per portlet column render | `plone.portletmanager.name` |
 | `portlet <name>` | per portlet, child of `portletcolumn` | — |
 
+The root request span is named after the HTTP method alone, as the OpenTelemetry HTTP semantic conventions ask when there is no low-cardinality route.
+A path in the name would give collectors that derive metrics from span names, such as the spanmetrics connector, one series per URL.
 `<segment>` is the last path segment of the subrequest URL.
 The `catalog.*` spans cover both standard Plone and plone-pgcatalog.
 The `transformchain` spans are emitted only when `plone.transformchain` is installed.

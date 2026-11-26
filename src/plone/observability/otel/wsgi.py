@@ -2,6 +2,7 @@
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
+from opentelemetry.util.http import sanitize_method
 from plone.observability import rss
 from plone.observability.otel import catalog
 from plone.observability.otel import exclusions
@@ -10,6 +11,20 @@ from plone.observability.otel import provider
 from plone.observability.otel import rendering
 from plone.observability.otel import subrequest
 from plone.observability.otel import zodb
+
+
+def name_server_span(span, environ):
+    """Name the request span after the HTTP method alone.
+
+    The middleware names it ``"{method} {path}"``. The OpenTelemetry HTTP
+    semantic conventions want ``"{method} {http.route}"`` with a low-cardinality
+    route, or the method alone when there is none. Zope has no route template,
+    and a path gives one span name per URL: collectors that derive metrics from
+    span names (the spanmetrics connector) then get one series per URL. The path
+    stays in the span's ``url.path`` / ``http.target`` attribute.
+    """
+    method = sanitize_method(environ.get("REQUEST_METHOD", "").strip())
+    span.update_name(method if method and method != "_OTHER" else "HTTP")
 
 
 def make_filter(app, global_conf, **local_conf):
@@ -37,7 +52,7 @@ def make_filter(app, global_conf, **local_conf):
         finally:
             rss.annotate(trace.get_current_span(), start, rss.read())
 
-    traced_app = OpenTelemetryMiddleware(rss_app)
+    traced_app = OpenTelemetryMiddleware(rss_app, request_hook=name_server_span)
 
     def filtered(environ, start_response):
         if exclusions.is_excluded(environ.get("PATH_INFO", "")):

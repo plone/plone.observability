@@ -69,3 +69,36 @@ def test_make_filter_skips_activation_when_disabled(monkeypatch):
     monkeypatch.setattr(provider, "setup_tracing", lambda: calls.append("setup"))
     wsgi.make_filter(object(), {})
     assert calls == []
+
+
+def _server_span_name(span_exporter, method, path):
+    from plone.observability.otel.wsgi import make_filter
+
+    def app(environ, start_response):
+        start_response("200 OK", [("Content-Type", "text/plain")])
+        return [b"ok"]
+
+    environ = {
+        "REQUEST_METHOD": method,
+        "PATH_INFO": path,
+        "SERVER_NAME": "localhost",
+        "SERVER_PORT": "80",
+        "wsgi.url_scheme": "http",
+    }
+    b"".join(make_filter(app, {})(environ, lambda status, headers, exc=None: None))
+    return next(
+        s.name for s in span_exporter.get_finished_spans() if s.kind.name == "SERVER"
+    )
+
+
+def test_server_span_name_has_no_path(span_exporter):
+    # One name per URL would give span-to-metrics connectors one series per URL.
+    path = (
+        "/VirtualHostBase/https/example.org:443/Plone/VirtualHostRoot"
+        "/++webresource++9ff7b2fc-bb60-5b7e-a094-49a1fe46d833/++plone++facetednavigation/faceted-edit.min.js"
+    )
+    assert _server_span_name(span_exporter, "GET", path) == "GET"
+
+
+def test_server_span_name_of_unknown_method(span_exporter):
+    assert _server_span_name(span_exporter, "FOO", "/Plone") == "HTTP"
