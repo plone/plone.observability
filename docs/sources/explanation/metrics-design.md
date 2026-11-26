@@ -20,6 +20,7 @@ User identity, when you want it at all, belongs on a trace span.
 Each span is a separate record.
 High cardinality is the norm there.
 That is why `enduser.id` is a span attribute gated behind `PLONE_OBSERVABILITY_OTEL_USER_ID`, and never a metric label.
+Span names are the exception: collectors such as the spanmetrics connector turn them into metric labels, so they stay low-cardinality.
 
 (metrics-design-global-versus-instance-scope)=
 

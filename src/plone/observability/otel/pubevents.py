@@ -57,7 +57,8 @@ def on_after_traversal(event):
     span = event.request.environ.get(_SPAN_KEY)
     if span is None:
         return
-    span.set_attribute("http.route", event.request.get("PATH_INFO", ""))
+    # Not http.route: that one must be low-cardinality, and a path is not.
+    span.set_attribute("url.path", event.request.get("PATH_INFO", ""))
     published = event.request.get("PUBLISHED", None)
     if published is not None:
         span.set_attribute("plone.published", type(published).__name__)
